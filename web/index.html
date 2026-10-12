@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1115">
+  <meta name="description" content="Watch : console web locale pour journaux Fieldwatch Wi-Fi et Bluetooth LE.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self'">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <title>Watch — Console Fieldwatch</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">◉</span><div><strong>WATCH</strong><small>FIELD INTELLIGENCE</small></div></div>
+      <p class="nav-caption">ESPACE DE TRAVAIL</p>
+      <nav class="navigation" aria-label="Navigation principale">
+        <button class="nav-link active" data-view="overview" aria-current="page"><span aria-hidden="true">▦</span> Vue d'ensemble</button>
+        <button class="nav-link" data-view="devices"><span aria-hidden="true">≡</span> Observations</button>
+        <button class="nav-link" data-view="map"><span aria-hidden="true">⌖</span> Positions</button>
+        <button class="nav-link" data-view="guide"><span aria-hidden="true">ⓘ</span> Guide & sécurité</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-status"><span class="status-dot"></span> Traitement sur cet appareil</div>
+        <p>Sans compte, sans serveur d'analyse. Les fichiers restent dans la mémoire du navigateur.</p>
+        <a href="https://github.com/dbrckk/Watch" rel="noopener noreferrer" target="_blank">Code source ↗</a>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div><div class="eyebrow">WATCH / CONSOLE</div><h1 id="page-title">Vue d'ensemble</h1></div>
+        <div class="top-actions">
+          <label class="privacy-switch" for="privacy-toggle"><input type="checkbox" id="privacy-toggle" checked> <span>Confidentialité</span></label>
+          <label for="import-input" class="btn btn-primary"><span aria-hidden="true">＋</span> Importer</label>
+          <input id="import-input" class="visually-hidden" type="file" accept=".csv,.json,.jsonl,.ndjson,text/csv,application/json" multiple>
+        </div>
+      </header>
+      <main id="main-content">
+        <section id="view-overview" class="panel-view">
+          <div class="intro">
+            <div><p class="eyebrow green">RADIO OBSERVATION / ANALYSE LOCALE</p><h2>Comprendre ce qui a été détecté.</h2><p>Importez les journaux exportés par Fieldwatch pour analyser les réseaux Wi-Fi et les annonces Bluetooth LE autour de votre téléphone.</p></div>
+            <div class="intro-graphic" aria-hidden="true"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="radar-center">⌖</div></div>
+          </div>
+          <div class="metrics" aria-label="Indicateurs">
+            <article class="metric"><span>Radios distinctes</span><strong id="metric-total">—</strong><small>Identifiants Wi-Fi + BLE</small></article>
+            <article class="metric"><span>Réseaux Wi-Fi</span><strong id="metric-wifi">—</strong><small>Points d'accès observés</small></article>
+            <article class="metric"><span>Bluetooth LE</span><strong id="metric-ble">—</strong><small>Annonceurs détectés</small></article>
+            <article class="metric"><span>Positions associées</span><strong id="metric-geo">—</strong><small>Position du téléphone, pas de la radio</small></article>
+          </div>
+          <div class="overview-grid">
+            <section class="surface upload-surface" aria-labelledby="import-heading">
+              <div class="section-heading"><div><p class="eyebrow">SOURCE DE DONNÉES</p><h3 id="import-heading">Importer un relevé</h3></div><span class="tiny-tag">CSV / JSONL / JSON</span></div>
+              <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choisir des fichiers Fieldwatch">
+                <div class="drop-icon" aria-hidden="true">↥</div><strong>Glissez vos fichiers ici</strong>
+                <p>ou touchez cette zone pour parcourir votre appareil</p>
+                <span>Exports Fieldwatch · 40 Mo maximum par fichier</span>
+              </div>
+              <div class="upload-meta"><span id="file-status">Aucun fichier chargé</span><button id="clear-data" class="text-btn" disabled>Effacer la session</button></div>
+            </section>
+            <section class="surface" aria-labelledby="timeline-heading">
+              <div class="section-heading"><div><p class="eyebrow">ACTIVITÉ</p><h3 id="timeline-heading">Observations dans le temps</h3></div><span id="timeline-range" class="tiny-tag">Aucune donnée</span></div>
+              <div id="timeline" class="timeline empty-chart"><p>La chronologie apparaîtra après l'importation d'un relevé contenant des horodatages.</p></div>
+            </section>
+          </div>
+          <section class="surface" aria-labelledby="recent-heading">
+            <div class="section-heading"><div><p class="eyebrow">DERNIÈRES OBSERVATIONS</p><h3 id="recent-heading">Radios les plus récentes</h3></div><button class="text-btn" data-go="devices">Voir toutes les observations →</button></div>
+            <div id="recent-list" class="radio-list"><p class="empty-state">Aucune observation. Importez un export de l'application Android.</p></div>
+          </section>
+        </section>
+        <section id="view-devices" class="panel-view" hidden>
+          <div class="view-heading"><div><p class="eyebrow green">INVENTAIRE</p><h2>Observations radio</h2><p>Recherchez par nom, fabricant ou identifiant. Les résultats proviennent uniquement de vos imports.</p></div>
+            <div class="export-buttons"><button id="export-csv" class="btn btn-quiet" disabled>Exporter CSV</button><button id="export-json" class="btn btn-quiet" disabled>Exporter JSON</button></div>
+          </div>
+          <div class="surface">
+            <div class="filters">
+              <label class="search-wrap"><span class="visually-hidden">Rechercher</span><input id="device-search" type="search" placeholder="Rechercher un nom, MAC, fabricant…" autocomplete="off"></label>
+              <label><span class="visually-hidden">Type</span><select id="kind-filter"><option value="ALL">Toutes les radios</option><option value="WIFI">Wi-Fi</option><option value="BLE">Bluetooth LE</option></select></label>
+              <label><span class="visually-hidden">Tri</span><select id="sort-filter"><option value="recent">Plus récentes</option><option value="signal">Signal le plus fort</option><option value="hits">Plus observées</option><option value="name">Nom A → Z</option></select></label>
+            </div>
+            <div class="list-summary"><span id="list-count">0 résultat</span><span>RSSI en dBm · valeur plus proche de 0 = signal reçu plus fort</span></div>
+            <div id="device-list" class="radio-list"><p class="empty-state">Aucun relevé chargé.</p></div>
+            <button class="btn btn-quiet load-more" id="load-more" hidden>Afficher 100 résultats supplémentaires</button>
+          </div>
+        </section>
+        <section id="view-map" class="panel-view" hidden>
+          <div class="view-heading"><div><p class="eyebrow green">RELEVÉ GÉOGRAPHIQUE</p><h2>Positions d'écoute</h2><p>Nuage de points local, sans carte externe ni transmission de coordonnées.</p></div><span id="map-count" class="tiny-tag">0 position</span></div>
+          <div class="surface map-surface">
+            <canvas id="map-canvas" role="img" aria-label="Représentation locale des positions où le téléphone a entendu des radios"></canvas>
+            <p id="map-empty" class="map-empty">Importez des observations avec coordonnées GPS pour visualiser leurs positions.</p>
+          </div>
+          <p class="privacy-note"><strong>Attention :</strong> les coordonnées représentent la position du téléphone lors de la détection. Elles ne localisent pas les émetteurs. Le graphique n'effectue aucune requête vers un service cartographique.</p>
+        </section>
+        <section id="view-guide" class="panel-view" hidden>
+          <div class="view-heading"><div><p class="eyebrow green">DOCUMENTATION</p><h2>Utiliser Watch</h2><p>Deux interfaces complémentaires : détection sur Android, analyse dans le navigateur.</p></div></div>
+          <div class="guide-grid">
+            <article class="surface guide-card"><div class="guide-number">01</div><h3>Collecter sur Android</h3><p>Installez Fieldwatch sur Android 10 ou plus, accordez les autorisations nécessaires, puis lancez l'écoute des points d'accès Wi-Fi et annonces Bluetooth LE.</p><a href="https://github.com/dbrckk/Watch/blob/main/dist/Fieldwatch.apk" rel="noopener noreferrer" target="_blank">Consulter l'APK d'origine ↗</a></article>
+            <article class="surface guide-card"><div class="guide-number">02</div><h3>Exporter les journaux</h3><p>Dans Fieldwatch : <strong>Reports → Log → Export</strong>. Choisissez CSV ou JSON lines, enregistrez le fichier sur le téléphone, puis ouvrez cette console web.</p></article>
+            <article class="surface guide-card"><div class="guide-number">03</div><h3>Analyser localement</h3><p>Importez le ou les fichiers. Filtrez les observations, comparez les signaux RSSI, examinez les positions disponibles et exportez vos résultats.</p></article>
+            <article class="surface guide-card"><div class="guide-number">04</div><h3>Préserver la confidentialité</h3><p>Les données sont conservées uniquement en mémoire pendant la session. Par défaut les identifiants MAC et les coordonnées sont masqués à l'écran et dans les exports dérivés.</p></article>
+          </div>
+          <div class="surface limitations"><h3>Limites importantes</h3><p>Une page web ordinaire ne peut pas accéder librement aux scans Wi-Fi du système Android ni remplacer les services de scan natifs en arrière-plan. Les détections restent réalisées par Fieldwatch sur Android.</p><p>Les identifications, catégories et éventuels signaux de proximité sont indicatifs : ils ne prouvent ni l'identité d'une personne ni la présence d'un dispositif de suivi. Utilisez cet outil uniquement dans un cadre légal et autorisé.</p><a href="https://github.com/OffGridPete/Fieldwatch" rel="noopener noreferrer" target="_blank">Projet d'origine : OffGridPete / Fieldwatch ↗</a></div>
+        </section>
+      </main>
+      <footer class="main-footer"><span>WATCH <span class="dim">/</span> CONSOLE LOCALE</span><span id="status-text">En attente de relevés · aucun transfert de données</span></footer>
+    </div>
+  </div>
+  <dialog id="device-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><div><p class="eyebrow">FICHE RADIO</p><h2 id="dialog-title">Détails</h2></div><button id="close-dialog" aria-label="Fermer" class="icon-btn">✕</button></div><div id="dialog-details"></div><p class="privacy-note">RSSI = force du signal reçu par ce téléphone. Ce n'est pas une mesure directe de distance.</p></dialog>
+  <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
