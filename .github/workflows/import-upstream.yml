@@ -32,7 +32,7 @@ jobs:
           git -C "$upstream_dir" fetch --quiet --depth=1 origin 844ace8c5c787695977b2c4857e06533603aba95
           git -C "$upstream_dir" checkout --quiet --detach FETCH_HEAD
           test "$(git -C "$upstream_dir" rev-parse HEAD)" = "844ace8c5c787695977b2c4857e06533603aba95"
-          rsync -a --exclude='.git' --exclude='.github/workflows/import-upstream.yml' "$upstream_dir/" "$GITHUB_WORKSPACE/"
+          rsync -a --exclude='.git' --exclude='.github/workflows/' "$upstream_dir/" "$GITHUB_WORKSPACE/"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
