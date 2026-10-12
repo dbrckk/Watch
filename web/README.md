@@ -25,7 +25,7 @@ La console est une application statique sans dépendance JavaScript ni service c
 Depuis la racine : \`node --test web/tests/*.test.mjs\`.
 Pour lancer localement : \`python3 -m http.server 8000 --directory web\` puis ouvrir http://localhost:8000/ .
 
-GitHub Pages peut la publier via .github/workflows/web.yml. Le dossier web/ est la racine du site. Le service worker et les liens utilisent des chemins relatifs pour fonctionner sur /Watch/ .
+Site public déployé : https://watch-fieldwatch.shipstatic.com (hébergement statique ShipStatic, plan gratuit connecté). Le workflow .github/workflows/web.yml exécute les vérifications sans dépendre de l'activation initiale de GitHub Pages. Les modifications futures sur GitHub ne redéploient pas automatiquement ShipStatic. Le dossier web/ reste publiable sur GitHub Pages après activation manuelle du service.
 
 ## Sécurité et attribution
 
