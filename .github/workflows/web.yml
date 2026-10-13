@@ -39,6 +39,8 @@ jobs:
         run: node --test web/tests/*.test.mjs
       - name: Test signed Android upgrade compatibility (offline mocks)
         run: bash scripts/tests/verify-android-release.sh
+      - name: Test Android/Termux private signing setup with mocked GitHub API
+        run: bash scripts/tests/setup-watch-signing.sh
       - name: Verify required static files
         run: |
           test -s web/index.html
