@@ -47,3 +47,7 @@ Pour recevoir le fichier, **installez la PWA depuis Chrome Android** (menu ⋮ �
 **Ce pont est à la demande, en un geste**, et non un flux Wi-Fi/BLE live. L'APK d'origine de Fieldwatch dans `dist/` ne contient pas ce bouton ; il faut installer un build APK généré à partir de ce dépôt. Le partage depuis la nouvelle application n'est pas testé sur appareil réel à ce stade.
 
 **Licences** : le code et les attributions MIT d'origine restent dans LICENSE et NOTICE.
+
+## Installation parallèle à Fieldwatch officiel
+
+L'identifiant Android du fork est `app.watch.fieldwatch` et son libellé « Watch Fieldwatch ». Il peut donc être installé **à côté** de Fieldwatch officiel (`app.fieldwatch`) sans conflit de certificat ou suppression des données de l'application d'origine. Les deux applications disposent de journaux isolés et ne partagent pas automatiquement les données. Il faut enregistrer de nouveaux relevés dans Watch Fieldwatch avant d'utiliser le nouveau bouton de partage. Les nouveaux builds GitHub Actions sont des APK de test signées pour le debug, pas des publications signées officiellement par Off Grid Pete LLC.
