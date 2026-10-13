@@ -29,7 +29,15 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 class LogStore(context: Context) {
-    private val dir = File(context.filesDir, "logs").apply { mkdirs() }
+    private val dir = File(context.filesDir, "logs").apply {
+        mkdirs()
+        // Migrate old on-disk exports to the new bounded cache policy.
+        ExportCacheRetention.prune(this)
+    }
+    private val exportDir = File(context.cacheDir, "export").apply {
+        mkdirs()
+        ExportCacheRetention.prune(this)
+    }
     private val mutex = Mutex()
     private val generation = AtomicInteger(0)
     private val paused = AtomicBoolean(false)
@@ -139,11 +147,23 @@ class LogStore(context: Context) {
             mutex.withLock {
                 withContext(Dispatchers.IO) {
                     flushWriter()
-                    val out = File(dir, "fieldwatch-export-${System.currentTimeMillis()}.${exportExtension(asJsonl)}")
-                    out.outputStream().buffered(64 * 1024).use { dest ->
-                        writeExport(dest, asJsonl, radios, onProgress)
+                    // FileProvider already exposes cache/export/ to Android
+                    // share recipients. The shared copy is temporary, not a
+                    // permanent second copy of every rotating log part.
+                    ExportCacheRetention.prune(exportDir)
+                    val out = File(
+                        exportDir,
+                        "fieldwatch-export-${System.currentTimeMillis()}-${java.util.UUID.randomUUID()}.${exportExtension(asJsonl)}",
+                    )
+                    try {
+                        out.outputStream().buffered(64 * 1024).use { dest ->
+                            writeExport(dest, asJsonl, radios, onProgress)
+                        }
+                        out
+                    } catch (error: Throwable) {
+                        out.delete()
+                        throw error
                     }
-                    out
                 }
             }
         }
@@ -233,6 +253,9 @@ class LogStore(context: Context) {
             withContext(Dispatchers.IO) {
                 closeWriter()
                 dir.listFiles()?.forEach { runCatching { it.delete() } }
+                // Clearing radio logs also clears their cached shared copies.
+                // Other cached exports belong to independent features.
+                ExportCacheRetention.clear(exportDir)
                 index = 0
                 lines = 0
                 generation.incrementAndGet()
