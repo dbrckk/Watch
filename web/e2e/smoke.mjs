@@ -10,7 +10,7 @@ import {resolve, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright-core';
 
-const root=fileURLToPath(new URL('../',import.meta.url));
+const root=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const artifacts=resolve(root,'e2e/artifacts');
 const mimetypes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8',
   '.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
@@ -87,7 +87,7 @@ try{
   await step('Search/filter and radio details conceal MAC by default',async()=>{
     await page.locator('[data-view="devices"]').click();
     await expectText('#list-count','2 résultat(s) · 3 observation(s) importée(s)');
-    assert.equal(await page.locator('.radio-row').count(),2);
+    assert.equal(await page.locator('#device-list .radio-row').count(),2);
     await page.locator('#device-search').fill('Beacon');
     assert.equal(await page.locator('#device-list .radio-row').count(),1);
     await page.locator('#device-list .radio-row').click();
