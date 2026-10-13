@@ -48,8 +48,17 @@ async function expectText(selector,expected,timeout=15000){
     document.querySelector(selector)?.textContent?.trim()===expected,
   [selector,expected],{timeout});
 }
+async function limited(task,ms,label){
+  let timer;
+  try {
+    return await Promise.race([
+      task,
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' : délai de '+ms+' ms dépassé')),ms);}),
+    ]);
+  } finally {clearTimeout(timer);}
+}
 async function step(label,fn){
-  await fn();
+  await limited(Promise.resolve().then(fn),22000,label);
   process.stdout.write('PASS '+label+'\n');
 }
 try{
@@ -147,7 +156,10 @@ try{
   });
   await step('Real service worker intercepts OS-style multipart share',async()=>{
     await page.goto(origin+'/',{waitUntil:'networkidle'});
-    await page.evaluate(()=>navigator.serviceWorker.ready);
+    await limited(page.evaluate(async()=>{
+      const ready=await navigator.serviceWorker.ready;
+      return {active:ready.active?.state};
+    }),12000,'service worker ready');
     await page.reload({waitUntil:'networkidle'});
     await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
     const outcome=await page.evaluate(async jsonl=>{
