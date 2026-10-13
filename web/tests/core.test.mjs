@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseCsv,parseInput,aggregate,selectDevices,toCsv,summary} from '../core.mjs';
+import {parseCsv,parseInput,aggregate,selectDevices,toCsv,summary,exportDevices,geographicBounds} from '../core.mjs';
 
 test('ingère le vrai format JSONL Fieldwatch', () => {
   const x = parseInput('log.jsonl', '{"ts":1760200200000,"iso":"2026-10-11T18:30:00Z","kind":"WIFI","mac":"AA:BB:CC:DD:EE:FF","name":"AP","rssi":-65,"lat":46.78,"lon":4.85}\n');
@@ -35,4 +35,41 @@ test('filtre, trie, exporte avec protection contre les formules CSV', () => {
 });
 test('CSV malformé échoue explicitement', () => {
   assert.throws(() => parseCsv('timestamp,kind,mac,name\n1,WIFI,a,"bad'), /guillemet/);
+});
+
+test('privacy: JSON export never exposes internal kind:MAC keys or GPS', () => {
+  const mac='AA:BB:CC:DD:EE:FF';
+  const d=aggregate(parseInput('sample.json',JSON.stringify([
+    {kind:'WIFI',mac,name:'Home',lat:46.8,lon:4.8}
+  ])).records);
+  const safe=exportDevices(d,true);
+  const json=JSON.stringify(safe);
+  assert.equal(safe.length,1);
+  assert.equal(safe[0].position,null);
+  assert.equal(Object.hasOwn(safe[0],'key'),false);
+  assert.equal(json.includes(mac),false);
+  assert.equal(json.includes('46.8'),false);
+  assert.equal(d[0].mac,mac,'raw session data must remain unchanged');
+  const raw=exportDevices(d,false)[0];
+  assert.equal(raw.mac,mac);
+  assert.equal(raw.position.lat,46.8);
+  assert.equal(Object.hasOwn(raw,'key'),false);
+});
+test('large GPS datasets have exact bounds without spread/argument overflow', () => {
+  const n=160000;
+  const points=Array.from({length:n},(_,i)=>({
+    lat:46+(i/n),lon:4+(i/n)
+  }));
+  const bounds=geographicBounds(points);
+  assert.equal(bounds.count,n);
+  assert.equal(bounds.minLat,46);
+  assert.equal(bounds.minLon,4);
+  assert.ok(bounds.maxLat>46.99);
+});
+test('invalid timestamp is ignored instead of crashing CSV exports', () => {
+  const x=parseInput('data.json',JSON.stringify([
+    {kind:'BLE',mac:'test',ts:100000000000000000,first_seen:100000000000000000}
+  ]));
+  assert.equal(x.records[0].lastSeen,null);
+  assert.doesNotThrow(()=>toCsv(x.records));
 });

@@ -51,3 +51,10 @@ Pour recevoir le fichier, **installez la PWA depuis Chrome Android** (menu ⋮ �
 ## Installation parallèle à Fieldwatch officiel
 
 L'identifiant Android du fork est `app.watch.fieldwatch` et son libellé « Watch Fieldwatch ». Il peut donc être installé **à côté** de Fieldwatch officiel (`app.fieldwatch`) sans conflit de certificat ou suppression des données de l'application d'origine. Les deux applications disposent de journaux isolés et ne partagent pas automatiquement les données. Il faut enregistrer de nouveaux relevés dans Watch Fieldwatch avant d'utiliser le nouveau bouton de partage. Les nouveaux builds GitHub Actions sont des APK de test signées pour le debug, pas des publications signées officiellement par Off Grid Pete LLC.
+
+## Corrections de robustesse et de confidentialité
+
+- Les exports JSON avec Confidentialité active masquent la MAC, retirent la position et suppriment désormais aussi la clé interne `kind:MAC`, qui divulguait auparavant l'identifiant complet.
+- L'URL interne du cache de réception ne peut plus être lue par une requête GET interceptée par le service worker ; seules les ressources publiques du cache statique sont servies.
+- Le rendu des positions GPS utilise des bornes géographiques calculées en O(n) sans spread et un échantillonnage de dessin plafonné à 12 000 points, pour supporter les gros journaux.
+- Les horodatages hors limites ne provoquent plus d'exception lors d'un export CSV.

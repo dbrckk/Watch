@@ -1,4 +1,4 @@
-import {parseInput,aggregate,selectDevices,toCsv,summary} from './core.mjs';
+import {parseInput,aggregate,selectDevices,toCsv,summary,exportDevices,geographicBounds} from './core.mjs';
 
 const $ = id => document.getElementById(id);
 const state = {records:[],devices:[],files:[],privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview'};
@@ -152,10 +152,14 @@ function drawMap() {
   $('map-count').textContent=pts.length+' position(s)';
   $('map-empty').hidden=pts.length>0;
   if(!pts.length) return;
-  let minLat=Math.min(...pts.map(p=>p.lat)),maxLat=Math.max(...pts.map(p=>p.lat));
-  let minLon=Math.min(...pts.map(p=>p.lon)),maxLon=Math.max(...pts.map(p=>p.lon));
+  const bounds=geographicBounds(pts);
+  if(!bounds)return;
+  const {minLat,maxLat,minLon,maxLon}=bounds;
   const latRange=Math.max(.0002,maxLat-minLat),lonRange=Math.max(.0002,maxLon-minLon);
-  for(const p of pts){
+  // Keep the drawing cost bounded on phones with very large radio histories.
+  const stride=Math.max(1,Math.ceil(pts.length/12000));
+  for(let i=0;i<pts.length;i+=stride){
+    const p=pts[i];
     const x=30+(w-60)*(.5+(p.lon-(minLon+maxLon)/2)/lonRange);
     const y=30+(h-60)*(.5-(p.lat-(minLat+maxLat)/2)/latRange);
     ctx.fillStyle='#b5ee6840';ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();
@@ -196,8 +200,7 @@ async function importFiles(fileList){
   $('import-input').value='';
 }
 function privacyDevices(devices){
-  if(!state.privacy)return devices;
-  return devices.map(d=>({...d,mac:shortId(d.mac),position:null}));
+  return exportDevices(devices,state.privacy);
 }
 function download(content,name,mime){
   const blob=new Blob([content],{type:mime});
