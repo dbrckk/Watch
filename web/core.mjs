@@ -61,12 +61,15 @@ export function normalize(row) {
     rawKind.includes('BLE') || rawKind.includes('BLUETOOTH') ? 'BLE' : null;
   const mac = clean(row.mac ?? row.bssid ?? row.address ?? '', 100).toUpperCase();
   if (!kind || !mac) return null;
-  const lat = number(row.lat ?? row.latitude ?? row.currentlatitude);
-  const lon = number(row.lon ?? row.longitude ?? row.currentlongitude);
+  // JSON exports retain coordinates under position; CSV exports have lat/lon.
+  const lat = number(row.lat ?? row.latitude ?? row.currentlatitude ?? row.position?.lat);
+  const lon = number(row.lon ?? row.longitude ?? row.currentlongitude ?? row.position?.lon);
   const position = lat !== null && lon !== null && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ?
     {lat, lon} : null;
-  const ts = dateMs(row.ts ?? row.timestamp ?? row.last_seen ?? row.lastSeen ?? row.iso);
-  const first = dateMs(row.first_seen ?? row.firstSeen) ?? ts;
+  // CSV headers are lowercased by parseCsv (firstSeen -> firstseen).
+  // Preserve timestamp values from both original Fieldwatch and Watch exports.
+  const ts = dateMs(row.ts ?? row.timestamp ?? row.last_seen ?? row.lastSeen ?? row.lastseen ?? row.iso);
+  const first = dateMs(row.first_seen ?? row.firstSeen ?? row.firstseen) ?? ts;
   const rssi = number(row.rssi);
   const hits = number(row.hits ?? row.hitCount) ?? 1;
   return {
