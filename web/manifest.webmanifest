@@ -15,5 +15,28 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "log",
+          "accept": [
+            ".csv",
+            ".json",
+            ".jsonl",
+            ".ndjson",
+            "text/csv",
+            "application/json",
+            "application/x-ndjson",
+            "application/ndjson",
+            "text/plain"
+          ]
+        }
+      ]
+    }
+  }
 }

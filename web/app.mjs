@@ -218,6 +218,33 @@ function exportData(format){
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.go)));
 $('import-input').addEventListener('change',e=>importFiles(e.target.files));
+
+/* Browser-local receipt of an OS-selected shared file. The inbox cache is
+   deleted before parsing so sensitive observations cannot outlive the import. */
+async function consumeIncomingShare(){
+  const params=new URLSearchParams(location.search);
+  if(!params.has('shared'))return;
+  history.replaceState(null,'',location.pathname+location.hash);
+  if(params.get('shared')!=='1'){
+    notify('Le fichier partagé est absent. Certaines versions de Chrome Android perdent les pièces jointes ; utilisez Importer.',true);
+    return;
+  }
+  try{
+    const cache=await caches.open('watch-share-inbox-v1');
+    const key=new URL('./__watch_incoming_file__',location.href).href;
+    const response=await cache.match(key);
+    if(!response)throw Error('Aucun fichier reçu. Utilisez Importer.');
+    await cache.delete(key);
+    const age=Date.now()-Number(response.headers.get('X-Watch-At'));
+    if(!Number.isFinite(age)||age<0||age>600000)throw Error('Partage expiré. Réessayez depuis Fieldwatch.');
+    const name=decodeURIComponent(response.headers.get('X-Watch-Name')||'fieldwatch-log.jsonl');
+    if(!/\.(csv|jsonl|ndjson|json)$/i.test(name))throw Error('Format non reconnu.');
+    const blob=await response.blob();
+    if(!blob.size||blob.size>40*1024*1024)throw Error('Le fichier est vide ou trop volumineux.');
+    await importFiles([new File([blob],name,{type:blob.type})]);
+  }catch(err){notify('Import par partage impossible : '+(err?.message||'erreur'),true);}
+}
+
 $('drop-zone').addEventListener('click',()=>$('import-input').click());
 $('drop-zone').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('import-input').click();}});
 for(const name of ['dragenter','dragover'])$('drop-zone').addEventListener(name,e=>{e.preventDefault();e.currentTarget.classList.add('dragging');});
@@ -235,3 +262,5 @@ $('close-dialog').addEventListener('click',()=>$('device-dialog').close());
 window.addEventListener('resize',()=>{if(state.view==='map')drawMap();});
 if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 refresh();
+
+consumeIncomingShare();
