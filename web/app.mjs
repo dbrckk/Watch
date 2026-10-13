@@ -147,8 +147,12 @@ function drawMap() {
   for(let y=22;y<h;y+=44){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
   const pts=state.devices.filter(d=>d.position).map(d=>d.position);
   $('map-count').textContent=pts.length+' position(s)';
-  $('map-empty').hidden=pts.length>0;
-  if(!pts.length) return;
+  $('map-empty').hidden=!state.privacy && pts.length>0;
+  $('map-empty').textContent=state.privacy
+    ? 'Affichage GPS désactivé en mode confidentialité. Désactivez Confidentialité pour afficher les positions.'
+    : 'Importez des observations avec coordonnées GPS pour visualiser leurs positions.';
+  // The canvas must not reveal GPS patterns with privacy turned on.
+  if(state.privacy || !pts.length) return;
   const bounds=geographicBounds(pts);
   if(!bounds)return;
   const {minLat,maxLat,minLon,maxLon}=bounds;
@@ -230,7 +234,8 @@ async function importFiles(fileList){
   }
 }
 function privacyDevices(devices){
-  return exportDevices(devices,state.privacy);
+  const namespace=state.privacy ? crypto.randomUUID() : '';
+  return exportDevices(devices,state.privacy,namespace);
 }
 function download(content,name,mime){
   const blob=new Blob([content],{type:mime});
