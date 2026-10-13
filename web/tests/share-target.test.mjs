@@ -7,7 +7,7 @@ import {File} from 'node:buffer';
 const script = readFileSync(new URL('../sw.js',import.meta.url),'utf8');
 const manifest = JSON.parse(readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8'));
 
-function makeWorker(){
+function makeWorker(networkFetch=async()=>{throw new Error('Offline');}){
   const entries=new Map();
   const listeners={};
   const context={
@@ -20,15 +20,15 @@ function makeWorker(){
     },
     caches:{
       open:async()=>({
-        match:async key=>entries.get(key)?.clone()||undefined,
-        put:async(key,value)=>{entries.set(key,value.clone());},
-        delete:async key=>entries.delete(key),
+        match:async key=>entries.get(typeof key==='string'?key:key.url)?.clone()||undefined,
+        put:async(key,value)=>{entries.set(typeof key==='string'?key:key.url,value.clone());},
+        delete:async key=>entries.delete(typeof key==='string'?key:key.url),
       }),
       keys:async()=>[],
       match:async key=>entries.get(typeof key==='string'?key:key.url)?.clone(),
     },
     URL,Response,Date,Number,Promise,
-    fetch:async()=>{throw new Error('Unexpected network request');}
+    fetch:networkFetch
   };
   runInNewContext(script,context);
   async function dispatch(request){
@@ -43,7 +43,8 @@ function makeWorker(){
   async function getInbox(){
     return dispatch(new Request('https://watch.example/__watch_incoming_file__'));
   }
-  return {share,getInbox,entries};
+  async function getPage(path){ return dispatch(new Request('https://watch.example'+path)); }
+  return {share,getInbox,getPage,entries};
 }
 test('share_target declares a file POST with matching field',()=>{
   assert.equal(manifest.share_target.method,'POST');
@@ -87,4 +88,18 @@ test('private inbox is never exposed by service worker GET',async()=>{
   const response=await worker.getInbox();
   assert.equal(response.status,404);
   assert.doesNotMatch(await response.text(),/secret/);
+});
+
+test('new public content replaces an older cached asset without clearing site data',async()=>{
+  const worker=makeWorker(async()=>new Response('new page',{status:200,headers:{'Content-Type':'text/html'}}));
+  worker.entries.set('https://watch.example/index.html',new Response('stale page'));
+  const response=await worker.getPage('/index.html');
+  assert.equal(await response.text(),'new page');
+  assert.equal(await worker.entries.get('https://watch.example/index.html').text(),'new page');
+});
+test('offline public content is served from cache',async()=>{
+  const worker=makeWorker();
+  worker.entries.set('https://watch.example/style.css',new Response('cached styles'));
+  const response=await worker.getPage('/style.css');
+  assert.equal(await response.text(),'cached styles');
 });
