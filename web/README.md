@@ -108,3 +108,7 @@ Les exports **Geo → WiGLE CSV** produits par l'application Android Fieldwatch 
 ## Cohérence du signal RSSI entre Android et Web
 
 Lors d'une importation, Watch Web conserve pour chaque radio le **RSSI de la dernière observation horodatée**, et non la valeur la plus forte d'un ancien relevé. Le tri « Signal » s'appuie sur cette mesure récente. Les journaux peuvent être lus dans n'importe quel ordre : des lignes plus anciennes ne remplacent pas les informations courantes, mais peuvent compléter les champs manquants. Les détails affichent explicitement « Dernier RSSI observé ». Ce comportement correspond au moteur Android. Des tests unitaires et Chromium contrôlent les régressions.
+
+## Horodatage UTC et exports concurrents Android
+
+Les exports GPX, KML et WiGLE formatent maintenant leurs dates avec `java.time.DateTimeFormatter` immuable en UTC. L'ancien formateur partagé `SimpleDateFormat` pouvait produire des résultats incohérents si plusieurs opérations d'export se déroulaient simultanément. Des tests Kotlin vérifient l'heure UTC avec un fuseau système différent et 160 exports concurrents couvrant les trois formats, sans modification du format de fichier.

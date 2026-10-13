@@ -138,4 +138,54 @@ class GeoExportTest {
         assertTrue(kml.contains("<LineString>"))
         assertTrue(kml.contains("-122.143500,37.442500"))
     }
+    @Test
+    fun exportsUseUTCIndependentlyOfThePhoneTimezone() {
+        val ts = java.time.Instant.parse("2026-10-11T18:30:00Z").toEpochMilli()
+        val radio = cafe.copy(firstSeen = ts, lastSeen = ts)
+        val originalZone = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Pacific/Honolulu"))
+            val gpx = GeoExport.render(GeoExport.Format.GPX, listOf(radio), emptyMap(), "1.2", "")
+            val kml = GeoExport.render(GeoExport.Format.KML, listOf(radio), emptyMap(), "1.2", "")
+            val wigle = GeoExport.render(GeoExport.Format.WIGLE, listOf(radio), emptyMap(), "1.2", "")
+            assertTrue(gpx.contains("<time>2026-10-11T18:30:00Z</time>"))
+            assertTrue(kml.contains("<when>2026-10-11T18:30:00Z</when>"))
+            assertTrue(wigle.contains(",2026-10-11 18:30:00,"))
+        } finally {
+            java.util.TimeZone.setDefault(originalZone)
+        }
+    }
+
+    @Test
+    fun concurrentGeoExportsPreserveExactUTCDateFields() {
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(8)
+        try {
+            val base = java.time.Instant.parse("2026-10-11T18:30:00Z")
+            val formatter = java.time.format.DateTimeFormatter
+                .ofPattern("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                .withZone(java.time.ZoneOffset.UTC)
+            val formatterXml = java.time.format.DateTimeFormatter
+                .ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                .withZone(java.time.ZoneOffset.UTC)
+            val jobs = (0 until 160).map { index ->
+                executor.submit<Boolean> {
+                    val instant = base.plusSeconds(index.toLong() * 61L)
+                    val ms = instant.toEpochMilli()
+                    val radio = cafe.copy(firstSeen = ms, lastSeen = ms)
+                    val isoExpected = formatterXml.format(instant)
+                    val wigleExpected = formatter.format(instant)
+                    val wigle = GeoExport.render(GeoExport.Format.WIGLE, listOf(radio), emptyMap(), "1.2", "")
+                    val kml = GeoExport.render(GeoExport.Format.KML, listOf(radio), emptyMap(), "1.2", "")
+                    val gpx = GeoExport.render(GeoExport.Format.GPX, listOf(radio), emptyMap(), "1.2", "")
+                    wigle.contains(",$wigleExpected,") &&
+                        kml.contains("<when>$isoExpected</when>") &&
+                        gpx.contains("<time>$isoExpected</time>")
+                }
+            }
+            jobs.forEach { assertTrue("Concurrent geographic export timestamp mismatch", it.get(15, java.util.concurrent.TimeUnit.SECONDS)) }
+        } finally {
+            executor.shutdownNow()
+        }
+    }
+
 }

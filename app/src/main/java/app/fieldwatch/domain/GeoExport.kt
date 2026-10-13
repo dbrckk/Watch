@@ -1,9 +1,9 @@
 package app.fieldwatch.domain
 
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.TimeZone
 
 /** Share/save format for Reports → Log. Disk is always CSV; JSON lines is an export. */
 enum class LogExportKind(val label: String) {
@@ -211,13 +211,16 @@ object GeoExport {
 
     private fun coord(v: Double): String = String.format(Locale.US, "%.6f", v)
 
-    private val ISO_FMT = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
-    private val WIGLE_FMT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    // DateTimeFormatter is immutable and thread safe. Shared
+    // SimpleDateFormat instances could emit incorrect dates when two
+    // geographic exports ran concurrently.
+    private val ISO_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+            .withZone(ZoneOffset.UTC)
+    private val WIGLE_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US)
+            .withZone(ZoneOffset.UTC)
 
-    private fun iso(ms: Long): String = ISO_FMT.format(Date(ms))
-    private fun wigleTime(ms: Long): String = WIGLE_FMT.format(Date(ms))
+    private fun iso(ms: Long): String = ISO_FMT.format(Instant.ofEpochMilli(ms))
+    private fun wigleTime(ms: Long): String = WIGLE_FMT.format(Instant.ofEpochMilli(ms))
 }
