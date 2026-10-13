@@ -1,6 +1,6 @@
 /* Explicit user-initiated local Android -> PWA share handoff.
    Only the share POST is accepted. It never reaches the static host. */
-const CACHE='watch-console-v3';
+const CACHE='watch-console-v4';
 const INBOX='watch-share-inbox-v1';
 const MAX_BYTES=40*1024*1024;
 const AGE_MS=10*60*1000;
@@ -56,10 +56,23 @@ self.addEventListener('fetch',event=>{
   if(event.request.mode==='navigate')event.waitUntil?.(expirePending());
   event.respondWith((async()=>{
     const assetCache=await caches.open(CACHE);
-    const cached=await assetCache.match(event.request);
-    if(cached)return cached;
-    try{return await fetch(event.request);}
-    catch{
+    try{
+      // Network first so deployed assets refresh in already-installed PWAs.
+      const response=await fetch(event.request);
+      if(response.ok){
+        const pathname=new URL(event.request.url).pathname;
+        const isStatic=ASSETS.some(rel=>new URL(rel,self.registration.scope).pathname===pathname);
+        if(isStatic){
+          const key=event.request.mode==='navigate'
+            ? new URL('./index.html',self.registration.scope).href
+            : event.request;
+          try{await assetCache.put(key,response.clone());}catch{}
+        }
+      }
+      return response;
+    }catch{
+      const cached=await assetCache.match(event.request);
+      if(cached)return cached;
       if(event.request.mode==='navigate'){
         const fallback=await assetCache.match(new URL('./index.html',self.registration.scope).href);
         if(fallback)return fallback;
