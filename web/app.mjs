@@ -293,7 +293,8 @@ $('export-json').addEventListener('click',()=>exportData('json'));
 $('clear-data').addEventListener('click',()=>{if(state.importing)return;state.observations=0;state.dailyCounts=[];state.devices=[];state.files=[];refresh();notify('Données effacées de cette session.');});
 $('close-dialog').addEventListener('click',()=>$('device-dialog').close());
 window.addEventListener('resize',()=>{if(state.view==='map')drawMap();});
-if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
+// Secure contexts include HTTPS and the loopback origin used for local development.
+if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 refresh();
 
 consumeIncomingShare();
