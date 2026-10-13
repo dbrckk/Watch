@@ -100,3 +100,7 @@ La fusion des radios lors de la relecture ne dépend plus de l'ordre physique de
 ## Cohérence du journal pendant un export
 
 Les nouvelles observations radio ne sont plus éliminées parce qu'un export est en cours : elles attendent le mutex d'export puis sont écrites. Une suppression explicite continue d'invalider les écritures préexistantes avec la génération du journal. Les coordonnées GPS sont validées comme une seule paire finie dans les limites WGS84 et ne sont jamais composées à partir de deux observations différentes. Trois tests Kotlin couvrent les données GPS incomplètes ou invalides. Le tampon d'entrée Android restant borné, cela ne supprime pas un éventuel risque de saturation en cas de scans plus rapides que leur traitement.
+
+## Import des relevés géographiques WiGLE
+
+Les exports **Geo → WiGLE CSV** produits par l'application Android Fieldwatch comportent les colonnes `FirstSeen`, `CurrentLatitude`, `CurrentLongitude` et `Type`, mais pas de colonne `timestamp`. Watch utilise désormais `FirstSeen` comme horodatage de l'observation (première et dernière date lorsque cette dernière n'est pas fournie). Le format `yyyy-MM-dd HH:mm:ss` écrit par Fieldwatch est interprété en **UTC**, conformément au code `GeoExport.kt`, et non selon le fuseau du navigateur. Les radios Wi-Fi et BLE, le RSSI, les canaux, les SSID comportant des virgules et les coordonnées GPS sont préservés. Des tests unitaires et Chromium vérifient que les jours de la chronologie restent corrects.

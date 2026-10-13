@@ -57,3 +57,20 @@ test('empty files return an empty data set with no stale records', async () => {
   assert.equal(res.devices.length,0);
   assert.deepEqual(res.dailyCounts,[]);
 });
+
+test('WiGLE GeoExport rows contribute to the daily timeline', async () => {
+  const csv = [
+    'WigleWifi-1.4,appRelease=Fieldwatch 1.1.26',
+    'MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type',
+    'AA:BB:CC:DD:EE:FF,Router,[ESS],2026-10-11 22:35:00,6,-48,46.780000,4.850000,0,0,WIFI',
+    'AA:BB:CC:DD:EE:FE,Beacon,,2026-10-12 01:15:00,0,-65,46.780000,4.850000,0,0,BLE',
+    '',
+  ].join('\n');
+  const result = await processFiles([file('geographical-wigle.csv',csv)]);
+  assert.equal(result.observations,2);
+  assert.equal(result.devices.length,2);
+  assert.deepEqual(result.dailyCounts,[
+    {date:'2026-10-11',count:1},
+    {date:'2026-10-12',count:1},
+  ]);
+});

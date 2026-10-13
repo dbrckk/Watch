@@ -12,8 +12,13 @@ function dateMs(raw) {
     const ms = n < 1e11 && n > 0 ? n * 1000 : n;
     return Math.abs(ms) <= 8640000000000000 ? ms : null;
   }
-  const p = Date.parse(String(raw || ''));
-  return Number.isFinite(p) && Math.abs(p) <= 8640000000000000 ? p : null;
+  const rawText = String(raw ?? '').trim();
+  // Fieldwatch's GeoExport.wigleCsv writes FirstSeen in UTC without an
+  // explicit zone: "yyyy-MM-dd HH:mm:ss". Date.parse treats that syntax as
+  // local time on many browsers, shifting the timeline on Android/desktop.
+  const wigleUtc = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(rawText);
+  const parsed = Date.parse(wigleUtc ? rawText.replace(' ', 'T') + 'Z' : rawText);
+  return Number.isFinite(parsed) && Math.abs(parsed) <= 8640000000000000 ? parsed : null;
 }
 
 function clean(v, max = 250) {
@@ -68,14 +73,17 @@ export function normalize(row) {
     {lat, lon} : null;
   // CSV headers are lowercased by parseCsv (firstSeen -> firstseen).
   // Preserve timestamp values from both original Fieldwatch and Watch exports.
-  const ts = dateMs(row.ts ?? row.timestamp ?? row.last_seen ?? row.lastSeen ?? row.lastseen ?? row.iso);
-  const first = dateMs(row.first_seen ?? row.firstSeen ?? row.firstseen) ?? ts;
+  const first = dateMs(row.first_seen ?? row.firstSeen ?? row.firstseen);
+  // WiGLE CSV has FirstSeen but no timestamp/lastSeen column. Each row is
+  // one historical radio observation; use that time for both endpoints.
+  const ts = dateMs(row.ts ?? row.timestamp ?? row.last_seen ?? row.lastSeen ?? row.lastseen ?? row.iso) ?? first;
+  const started = first ?? ts;
   const rssi = number(row.rssi);
   const hits = number(row.hits ?? row.hitCount) ?? 1;
   return {
     kind, mac, name: clean(row.name ?? row.ssid ?? ''), vendor: clean(row.vendor ?? ''),
     rssi: rssi === null ? null : Math.round(rssi),
-    firstSeen: first, lastSeen: ts, hits: Math.max(1, Math.floor(hits)),
+    firstSeen: started, lastSeen: ts, hits: Math.max(1, Math.floor(hits)),
     channel: number(row.channel), freq: number(row.freq ?? row.frequency_mhz),
     flags: clean(row.flags ?? ''), fleets: clean(row.fleets ?? row.signatures ?? ''),
     position,

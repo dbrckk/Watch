@@ -197,6 +197,28 @@ try{
     await page.locator('#clear-data').click();
     await expectText('#metric-total','—');
   });
+  await step('Fieldwatch geographic WiGLE CSV preserves the UTC timeline and positions',async()=>{
+    const wigle = [
+      'WigleWifi-1.4,appRelease=Fieldwatch 1.1.26',
+      'MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type',
+      'AA:BB:CC:00:11:22,Geo station,[ESS],2026-10-11 23:45:00,6,-42,46.780000,4.850000,0,0,WIFI',
+      'AA:BB:CC:00:11:23,Geo beacon,,2026-10-12 00:15:00,0,-61,46.790000,4.840000,0,0,BLE',
+      '',
+    ].join('\n');
+    await page.locator('#import-input').setInputFiles({
+      name:'Fieldwatch-geo.csv',mimeType:'text/csv',buffer:Buffer.from(wigle),
+    });
+    await expectText('#metric-total','2');
+    await expectText('#metric-geo','2');
+    const chartDates=await page.locator('#timeline .chart-col small').allTextContents();
+    assert.deepEqual(chartDates.map(s=>s.trim()),['10-11','10-12']);
+    await page.locator('[data-view="devices"]').click();
+    await page.locator('#device-search').fill('Geo station');
+    assert.equal(await page.locator('#device-list .radio-row').count(),1);
+    await page.locator('#device-list .radio-row').click();
+    assert.match(await page.locator('#dialog-details').textContent(),/12\/10\/2026|11\/10\/2026/);
+    await page.locator('#close-dialog').click();
+  });
   assert.deepEqual(errors,[],'Unexpected browser script or console errors');
   process.stdout.write('\nWatch real Chromium smoke test passed.\n');
 }catch(err){
