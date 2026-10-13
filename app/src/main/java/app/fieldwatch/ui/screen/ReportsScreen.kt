@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -93,6 +94,8 @@ fun ReportsScreen(
     var renameDraft by remember { mutableStateOf("") }
     var deleteSitId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteAll by remember { mutableStateOf(false) }
+    var confirmWebHandoff by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     Scaffold(
         contentWindowInsets = NestedTabInsets,
         topBar = { NestedTopBar("Reports") },
@@ -588,6 +591,42 @@ fun ReportsScreen(
                 onSave = onSaveToStorage,
                 hint = "The file on disk is one detection per line. CSV is those rows in a spreadsheet. GPX, KML, and WiGLE are points where this phone was when it heard each radio, not a location from the other radio. Tag detections with GPS and logging both have to be on. Share uses the Android share sheet. Fieldwatch does not upload.",
             )
+            Text(
+                "Watch web: automatically prepare a JSONL snapshot and choose the installed web app in the Android share sheet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FieldwatchActionButton(
+                onClick = { uriHandler.openUri("https://watch-fieldwatch.shipstatic.com") },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Open Watch web / install PWA") }
+            FieldwatchActionButton(
+                onClick = { confirmWebHandoff = true },
+                enabled = !exporting && vm.logBytes() > 0,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Send observations to Watch web") }
+            if (confirmWebHandoff) {
+                AlertDialog(
+                    onDismissRequest = { confirmWebHandoff = false },
+                    title = { Text("Share radio observations?") },
+                    text = {
+                        Text(
+                            "The file contains full radio identifiers and may include precise GPS coordinates. " +
+                                "Choose only the installed Watch web app (https://watch-fieldwatch.shipstatic.com) " +
+                                "in the Android share sheet. Never choose a recipient you do not trust."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            confirmWebHandoff = false
+                            vm.shareLogToWatchWeb()
+                        }) { Text("Choose recipient") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmWebHandoff = false }) { Text("Cancel") }
+                    },
+                )
+            }
             FieldwatchActionButton(
                 onClick = { confirmClear = true },
                 enabled = !exporting,

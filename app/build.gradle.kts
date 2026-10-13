@@ -25,11 +25,11 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "app.fieldwatch"
+        applicationId = "app.watch.fieldwatch"
         minSdk = 29
         targetSdk = 35
         versionCode = 36
-        versionName = "1.1.26"
+        versionName = "1.1.26-watch.1"
         vectorDrawables.useSupportLibrary = true
     }
 
