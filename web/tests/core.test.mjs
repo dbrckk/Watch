@@ -123,3 +123,36 @@ test('private exports keep opaque MAC aliases unique across shared-prefix device
   assert.equal(aggregate(parseInput('watch.csv',toCsv(safe)).records).length,2);
   assert.equal(aggregate(parseInput('watch.json',JSON.stringify({devices:safe})).records).length,2);
 });
+
+test('imports real Fieldwatch GeoExport WiGLE CSV with UTC FirstSeen, Wi-Fi/BLE and GPS', () => {
+  const source = [
+    'WigleWifi-1.4,appRelease=Fieldwatch 1.1.26,device=test-device',
+    'MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type',
+    'AA:BB:CC:DD:EE:01,"Radio, with comma",[ESS],2026-10-11 18:30:00,6,-51,46.780000,4.850000,0,0,WIFI',
+    '11:22:33:44:55:66,BLE beacon,,2026-10-11 19:31:42,0,-79,46.790000,4.840000,0,0,BLE',
+    '',
+  ].join('\n');
+  const result = parseInput('Fieldwatch-geo-wigle.csv', source);
+  assert.equal(result.ignored, 0);
+  assert.equal(result.records.length, 2);
+  const [wifi, ble] = result.records;
+  assert.equal(wifi.kind, 'WIFI');
+  assert.equal(wifi.name, 'Radio, with comma');
+  assert.equal(wifi.channel, 6);
+  assert.equal(wifi.rssi, -51);
+  assert.deepEqual(wifi.position, {lat:46.78, lon:4.85});
+  assert.equal(wifi.firstSeen, Date.UTC(2026, 9, 11, 18, 30));
+  assert.equal(wifi.lastSeen, Date.UTC(2026, 9, 11, 18, 30));
+  assert.equal(ble.kind, 'BLE');
+  assert.equal(ble.lastSeen, Date.UTC(2026, 9, 11, 19, 31, 42));
+  assert.deepEqual(ble.position, {lat:46.79, lon:4.84});
+  assert.equal(aggregate(result.records).length, 2);
+});
+test('FirstSeen-only normal exports also get a valid timeline endpoint', () => {
+  const d = parseInput('watch.json', JSON.stringify({devices:[{
+    kind:'BLE', mac:'AA:00', firstSeen:'2026-10-11T18:30:00Z', hits:8,
+  }]})).records[0];
+  assert.equal(d.firstSeen, Date.UTC(2026,9,11,18,30));
+  assert.equal(d.lastSeen, d.firstSeen);
+  assert.equal(d.hits, 8);
+});
