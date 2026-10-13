@@ -67,8 +67,9 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Compile optimized release variant (unsigned CI check)
-        run: ./gradlew assembleRelease --stacktrace
+      - name: Compile and verify signed optimized release (disposable CI identity)
+        shell: bash
+        run: bash scripts/tests/verify-real-signed-apk.sh
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
