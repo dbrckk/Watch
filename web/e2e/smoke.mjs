@@ -134,6 +134,8 @@ try{
     const parsed=JSON.parse(exported);
     assert.equal(parsed.privacyMasked,true);
     assert.equal(parsed.devices.length,2);
+    assert.equal(new Set(parsed.devices.map(d=>d.mac)).size,2,'private aliases collided');
+    assert.ok(parsed.devices.every(d=>d.mac.startsWith('WATCH-')),'missing opaque aliases');
     assert.ok(!exported.includes('DD:EE:FF:44:55:66'));
     assert.ok(!exported.includes('46.78'));
     assert.ok(!exported.includes('46.79'));
@@ -152,7 +154,12 @@ try{
     await expectText('#map-count','2 position(s)');
     const size=await page.locator('#map-canvas').evaluate(c=>({width:c.width,height:c.height}));
     assert.ok(size.width>0 && size.height>0);
-    assert.ok(await page.locator('#map-empty').isHidden());
+    assert.ok(await page.locator('#map-empty').isVisible(),'GPS map leaked when privacy enabled');
+    assert.match(await page.locator('#map-empty').textContent(),/Confidentialité/);
+    await page.locator('#privacy-toggle').uncheck();
+    assert.ok(await page.locator('#map-empty').isHidden(),'GPS visualization did not unlock');
+    await page.locator('#privacy-toggle').check();
+    assert.ok(await page.locator('#map-empty').isVisible(),'GPS visualization did not lock again');
   });
   await step('Real service worker intercepts OS-style multipart share',async()=>{
     await page.goto(origin+'/',{waitUntil:'networkidle'});

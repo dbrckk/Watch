@@ -180,15 +180,30 @@ export function summary(devices, observations) {
 }
 
 /**
- * Export only the public record fields. An internal kind:MAC key must never
- * reveal the unmasked address in a supposedly private JSON export.
+ * A private export uses an opaque unique ID, not a partially masked MAC.
+ * Partial masking collides when the file is reimported and can reveal OUI
+ * prefixes. Pass a fresh random namespace for each downloaded export.
  */
-export function exportDevices(devices, privacy = true) {
-  return devices.map(({key,mac,position,...fields}) => ({
-    ...fields,
-    mac: privacy ? (mac.length < 6 ? '••••' : mac.slice(0,5) + '••:••') : mac,
-    position: privacy ? null : (position ?? null),
-  }));
+export function exportDevices(devices, privacy = true, namespace = '') {
+  const prefix = String(namespace || 'local').replace(/[^a-zA-Z0-9-]/g, '').slice(0,64);
+  return devices.map(({key,mac,position,...fields}, index) => {
+    if (!privacy) return {...fields, mac, position:position ?? null};
+    const alias = 'WATCH-' + prefix + '-' + String(index + 1).padStart(6,'0');
+    const redact = value => {
+      if (typeof value !== 'string' || !mac) return value;
+      // Case-insensitive literal substring replacement. No untrusted regex.
+      const haystack=value.toUpperCase(), needle=mac.toUpperCase();
+      let cursor=0, rewritten='';
+      while (true) {
+        const at=haystack.indexOf(needle,cursor);
+        if (at<0) return rewritten+value.slice(cursor);
+        rewritten+=value.slice(cursor,at)+alias;
+        cursor=at+mac.length;
+      }
+    };
+    const safe=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,redact(v)]));
+    return {...safe,mac:alias,position:null};
+  });
 }
 
 /** O(n) geographic bounds without argument-spread limits on large imports. */

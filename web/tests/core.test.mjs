@@ -105,3 +105,21 @@ test('private JSON exports must remain without GPS after re-import', () => {
   assert.equal(incoming.records[0].position,null);
   assert.notEqual(incoming.records[0].mac,'AA:BB:CC:DD:EE:FF');
 });
+
+test('private exports keep opaque MAC aliases unique across shared-prefix devices', () => {
+  const raw=aggregate(parseInput('radios.json',JSON.stringify([
+    {kind:'BLE',mac:'AA:BB:CC:11:22:33',name:'AA:BB:CC:11:22:33'},
+    {kind:'BLE',mac:'AA:BB:CC:44:55:66',name:'Beacon'},
+  ])).records);
+  const safe=exportDevices(raw,true,'session01');
+  assert.equal(safe.length,2);
+  assert.notEqual(safe[0].mac,safe[1].mac);
+  assert.ok(safe.every(d=>d.mac.startsWith('WATCH-session01-')));
+  const json=JSON.stringify(safe);
+  for(const d of raw)assert.equal(json.includes(d.mac),false);
+  assert.equal(safe[0].name,safe[0].mac);
+  assert.equal(safe[0].position,null);
+  assert.notEqual(safe[0].mac,exportDevices(raw,true,'session02')[0].mac);
+  assert.equal(aggregate(parseInput('watch.csv',toCsv(safe)).records).length,2);
+  assert.equal(aggregate(parseInput('watch.json',JSON.stringify({devices:safe})).records).length,2);
+});
