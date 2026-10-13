@@ -62,3 +62,7 @@ L'identifiant Android du fork est `app.watch.fieldwatch` et son libellé « Watc
 ## Fidélité export → réimport
 
 L'interface accepte les formats originaux Fieldwatch et ses propres exports Watch. Les colonnes CSV `firstSeen`/`lastSeen`, normalisées en minuscules par le parseur, ainsi que les coordonnées `position.lat/lon` des JSON Watch, sont préservées à la réimportation. Des tests de régression contrôlent aussi que les exports masqués ne réintroduisent pas les positions GPS.
+
+## Publication Android stable
+
+La procédure de signature privée et de publication reproductible est dans [docs/watch-android-release.md](../docs/watch-android-release.md). Elle nécessite quatre secrets GitHub configurés une seule fois. En leur absence, seule l’APK de test provenant d’Android CI est disponible ; elle ne garantit pas les mises à jour sans réinstallation.
