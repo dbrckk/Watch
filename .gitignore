@@ -27,3 +27,7 @@ research/
 scripts/.lookup-cache/
 
 # Machine JDK path belongs in JAVA_HOME, not the tree
+
+# Browser-test tooling and screenshots (synthetic radio data only)
+web/e2e/node_modules/
+web/e2e/artifacts/

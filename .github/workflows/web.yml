@@ -42,3 +42,34 @@ jobs:
           test -s web/manifest.webmanifest
           test -s web/icon.svg
 
+
+  browser:
+    name: Chromium Android-size end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned test browser driver (no production dependencies)
+        run: npm --prefix web/e2e install --ignore-scripts --no-package-lock --no-audit --no-fund
+      - name: Verify Chrome availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          which google-chrome || which chromium || which chromium-browser
+      - name: Exercise real offline PWA, worker, privacy and sharing in Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          export WATCH_CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          node web/e2e/smoke.mjs
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-browser-smoke-failure
+          path: web/e2e/artifacts/
+          if-no-files-found: ignore
