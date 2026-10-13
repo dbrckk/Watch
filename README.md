@@ -1,3 +1,15 @@
+# Watch — fork non officiel de Fieldwatch
+
+**Ce dépôt est une adaptation indépendante de [OffGridPete/Fieldwatch](https://github.com/OffGridPete/Fieldwatch).** Il n'est ni une publication officielle ni une version signée par Off Grid Pete LLC. La licence MIT d'origine et les notices tierces restent applicables (voir [LICENSE](LICENSE) et [NOTICE](NOTICE)).
+
+- **Console web** : https://watch-fieldwatch.shipstatic.com — traitement local des fichiers CSV/JSONL/JSON, sans compte ni backend radio.
+- **Application Android Watch Fieldwatch** : identifiant séparé `app.watch.fieldwatch`, coexistence possible avec `app.fieldwatch` officiel et stockage des journaux distinct.
+- **Transfert Android → Web (nouveau build uniquement)** : depuis Reports, l'utilisateur confirme le partage et choisit la PWA installée dans le menu Android. Aucun flux en arrière-plan.
+- **Documentation** : [web/README.md](web/README.md). Le code d'origine complet figure ci-dessous.
+- **APK dans `dist/Fieldwatch.apk`** : fichier **importé depuis le projet d'origine**, ne contenant pas le bouton Watch web. Pour installer notre fork, utilisez l'APK compilée par GitHub Actions après succès de la CI. Il ne s'agit pas d'une signature officielle.
+
+---
+
 # Fieldwatch
 
 I built Fieldwatch as a personal tool to look at what Wi-Fi access points and Bluetooth LE ads my phone was able to pick up, so that I could better understand what devices were being used around me. It’s passive, it only listens, there’s no dongle, no account, and no backend server. I wanted something that would work offline in the field.
