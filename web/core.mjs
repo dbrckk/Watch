@@ -129,19 +129,32 @@ export function aggregate(records) {
     prev.hits += r.hits;
     if (r.firstSeen !== null && (prev.firstSeen === null || r.firstSeen < prev.firstSeen))
       prev.firstSeen = r.firstSeen;
-    const isNew = r.lastSeen !== null && (prev.lastSeen === null || r.lastSeen >= prev.lastSeen);
+    // A radio's displayed signal is the most recent valid measurement, not
+    // the historical strongest signal. File order can differ from scan order.
+    const isNew = r.lastSeen !== null
+      ? (prev.lastSeen === null || r.lastSeen >= prev.lastSeen)
+      : prev.lastSeen === null;
     if (isNew) {
-      prev.lastSeen = r.lastSeen;
+      if (r.lastSeen !== null) prev.lastSeen = r.lastSeen;
       if (r.name) prev.name = r.name;
       if (r.vendor) prev.vendor = r.vendor;
       if (r.position) prev.position = r.position;
       prev.hidden = r.hidden;
       prev.randomized = r.randomized;
-      prev.channel = r.channel;
-      prev.freq = r.freq;
+      if (r.channel !== null) prev.channel = r.channel;
+      if (r.freq !== null) prev.freq = r.freq;
       if (r.fleets) prev.fleets = r.fleets;
+      if (r.rssi !== null) prev.rssi = r.rssi;
+    } else {
+      // Older observations may fill missing metadata, never replace the
+      // newer signal or geographical fix.
+      if (!prev.name && r.name) prev.name = r.name;
+      if (!prev.vendor && r.vendor) prev.vendor = r.vendor;
+      if (!prev.position && r.position) prev.position = r.position;
+      if (prev.channel === null && r.channel !== null) prev.channel = r.channel;
+      if (prev.freq === null && r.freq !== null) prev.freq = r.freq;
+      if (prev.rssi === null && r.rssi !== null) prev.rssi = r.rssi;
     }
-    if (r.rssi !== null && (prev.rssi === null || r.rssi > prev.rssi)) prev.rssi = r.rssi;
   }
   return [...byId.values()];
 }

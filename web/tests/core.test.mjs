@@ -156,3 +156,40 @@ test('FirstSeen-only normal exports also get a valid timeline endpoint', () => {
   assert.equal(d.lastSeen, d.firstSeen);
   assert.equal(d.hits, 8);
 });
+
+test('newest radio RSSI wins regardless of file order, not strongest historical reading', () => {
+  const old={kind:'WIFI',mac:'AA:11',name:'old',ts:1760200200000,rssi:-21,channel:1,lat:45,lon:3};
+  const recent={kind:'WIFI',mac:'AA:11',name:'current',ts:1760200300000,rssi:-78,channel:11,lat:46,lon:4};
+  for (const rows of [[old,recent],[recent,old]]) {
+    const result=aggregate(parseInput('log.json',JSON.stringify(rows)).records);
+    assert.equal(result.length,1);
+    assert.equal(result[0].rssi,-78);
+    assert.equal(result[0].name,'current');
+    assert.equal(result[0].lastSeen,1760200300000);
+    assert.equal(result[0].firstSeen,1760200200000);
+    assert.equal(result[0].channel,11);
+    assert.deepEqual(result[0].position,{lat:46,lon:4});
+    assert.equal(result[0].hits,2);
+  }
+});
+test('missing RSSI on newest row allows fallback without losing timestamp', () => {
+  const rows=[
+    {kind:'BLE',mac:'AA:11',name:'Recent',ts:1760200300000,channel:7},
+    {kind:'BLE',mac:'AA:11',name:'Outdated',ts:1760200200000,rssi:-60,channel:2},
+  ];
+  const d=aggregate(parseInput('log.json',JSON.stringify(rows)).records)[0];
+  assert.equal(d.rssi,-60);
+  assert.equal(d.name,'Recent');
+  assert.equal(d.channel,7);
+  assert.equal(d.lastSeen,1760200300000);
+});
+test('signal sorting uses each radio latest RSSI, not its historical peak', () => {
+  const rows=[
+    {kind:'WIFI',mac:'AA',ts:1760200200000,rssi:-10},
+    {kind:'WIFI',mac:'BB',ts:1760200300000,rssi:-49},
+    {kind:'WIFI',mac:'AA',ts:1760200400000,rssi:-90},
+  ];
+  const ranked=selectDevices(aggregate(parseInput('log.json',JSON.stringify(rows)).records),'','ALL','signal');
+  assert.deepEqual(ranked.map(d=>d.mac),['BB','AA']);
+  assert.deepEqual(ranked.map(d=>d.rssi),[-49,-90]);
+});

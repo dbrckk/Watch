@@ -219,6 +219,24 @@ try{
     assert.match(await page.locator('#dialog-details').textContent(),/12\/10\/2026|11\/10\/2026/);
     await page.locator('#close-dialog').click();
   });
+  await step('Latest signal and strength ordering follow timestamps, not input order',async()=>{
+    const history=[
+      {kind:'WIFI',mac:'AA:00:01:00:00:01',name:'History A',ts:1760200200000,rssi:-12},
+      {kind:'WIFI',mac:'AA:00:01:00:00:02',name:'History B',ts:1760200300000,rssi:-50},
+      {kind:'WIFI',mac:'AA:00:01:00:00:01',name:'History A',ts:1760200400000,rssi:-88},
+    ];
+    await page.locator('#import-input').setInputFiles({
+      name:'history.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(history)),
+    });
+    await expectText('#metric-total','2');
+    await page.locator('[data-view="devices"]').click();
+    await page.locator('#device-search').fill('');
+    await page.locator('#sort-filter').selectOption('signal');
+    const names=await page.locator('#device-list .radio-row .radio-info strong').allTextContents();
+    assert.deepEqual(names,['History B','History A']);
+    const values=await page.locator('#device-list .radio-row .radio-extra strong').allTextContents();
+    assert.deepEqual(values.map(x=>x.trim()),['-50 dBm','-88 dBm']);
+  });
   assert.deepEqual(errors,[],'Unexpected browser script or console errors');
   process.stdout.write('\nWatch real Chromium smoke test passed.\n');
 }catch(err){
