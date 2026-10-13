@@ -28,3 +28,7 @@ dialog:modal #close-dialog {
   flex:0 0 44px;
   touch-action:manipulation;
 }
+
+/* Let hit-testing reach the close button through the sticky modal header. */
+dialog:modal .dialog-top { pointer-events:none; }
+dialog:modal #close-dialog { pointer-events:auto; }

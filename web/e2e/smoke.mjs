@@ -94,7 +94,20 @@ try{
     assert.ok(await page.locator('#device-dialog').isVisible());
     const masked=await page.locator('#dialog-details').textContent();
     assert.ok(!masked.includes('DD:EE:FF:44:55:66'),'dialog leaked raw MAC in privacy mode');
-    await page.locator('#close-dialog').click();
+    const closeInfo=await page.locator('#close-dialog').evaluate(button=>{
+      const r=button.getBoundingClientRect();
+      const px=r.left+r.width/2,py=r.top+r.height/2;
+      const hit=document.elementFromPoint(px,py);
+      return {
+        rect:{left:r.left,top:r.top,width:r.width,height:r.height},
+        hit:hit?.tagName+'#'+(hit?.id||''),
+        hitClass:hit?.className?.toString?.().slice(0,100),
+        visual:{width:visualViewport?.width,height:visualViewport?.height,offsetTop:visualViewport?.offsetTop},
+        viewport:{width:innerWidth,height:innerHeight,scrollY},
+      };
+    });
+    process.stdout.write('Dialog close hit-test: '+JSON.stringify(closeInfo)+'\n');
+    await page.locator('#close-dialog').click({timeout:5000});
     await page.locator('#device-search').fill('');
   });
   await step('JSON download masks raw identifiers and GPS, CSV remains safe',async()=>{
