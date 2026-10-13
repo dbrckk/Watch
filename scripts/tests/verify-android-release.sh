@@ -56,7 +56,7 @@ run() { bash "$gate" "$tmp/new.apk" "v1.1.26-watch.2" "$tmp/buildtools"; }
 ok() {
   local description="$1"
   shift
-  if ! ( "$@" run ) >"$tmp/output" 2>&1; then
+  if ! ( export "$@"; run ) >"$tmp/output" 2>&1; then
     echo "FAIL $description (should have succeeded)" >&2
     cat "$tmp/output" >&2
     exit 1
@@ -66,24 +66,22 @@ ok() {
 reject() {
   local description="$1"
   shift
-  if ( "$@" run ) >"$tmp/output" 2>&1; then
+  if ( export "$@"; run ) >"$tmp/output" 2>&1; then
     echo "FAIL $description (should have rejected)" >&2
     cat "$tmp/output" >&2
     exit 1
   fi
   echo "PASS $description"
 }
-export -f run
-export gate tmp
 
-ok "first release without prior APK" env PREVIOUS_TAG=""
-ok "same signing certificate and strictly newer versionCode" env PREVIOUS_TAG="v1.1.26-watch.1"
-reject "different signing key" env PREVIOUS_TAG="v1.1.26-watch.1" NEW_DIGEST="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-reject "reused versionCode" env PREVIOUS_TAG="v1.1.26-watch.1" NEW_CODE=36
-reject "lower versionCode" env PREVIOUS_TAG="v1.1.26-watch.1" NEW_CODE=35
-reject "wrong Android application ID" env PREVIOUS_TAG="" PACKAGE_ID="app.fieldwatch"
-reject "release version and APK version mismatch" env PREVIOUS_TAG="" NEW_VERSION="1.1.26-watch.99"
-reject "invalid candidate signature" env PREVIOUS_TAG="" MOCK_INVALID_SIGNATURE=1
-reject "GitHub API inaccessible" env MOCK_GITHUB_UNAVAILABLE=1
-reject "prior signed artifact unavailable" env PREVIOUS_TAG="v1.1.26-watch.1" MOCK_MISSING_APK=1
+ok "first release without prior APK" PREVIOUS_TAG=""
+ok "same signing certificate and strictly newer versionCode" PREVIOUS_TAG="v1.1.26-watch.1"
+reject "different signing key" PREVIOUS_TAG="v1.1.26-watch.1" NEW_DIGEST="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+reject "reused versionCode" PREVIOUS_TAG="v1.1.26-watch.1" NEW_CODE=36
+reject "lower versionCode" PREVIOUS_TAG="v1.1.26-watch.1" NEW_CODE=35
+reject "wrong Android application ID" PREVIOUS_TAG="" PACKAGE_ID="app.fieldwatch"
+reject "release version and APK version mismatch" PREVIOUS_TAG="" NEW_VERSION="1.1.26-watch.99"
+reject "invalid candidate signature" PREVIOUS_TAG="" MOCK_INVALID_SIGNATURE=1
+reject "GitHub API inaccessible" MOCK_GITHUB_UNAVAILABLE=1
+reject "prior signed artifact unavailable" PREVIOUS_TAG="v1.1.26-watch.1" MOCK_MISSING_APK=1
 echo "All signed release compatibility checks passed."
