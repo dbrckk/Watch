@@ -44,7 +44,9 @@ class LogStore(context: Context) {
     private var writer: BufferedWriter? = null
     private var writerPath: String? = null
     private var unflushed = 0
-    private var index = 0
+    // Recover the last written ring slot. Resetting to slot zero after every
+    // process restart can overwrite a newer segment and reorder observations.
+    private var index = LogFileRing.newestJsonlIndex(dir)
     private var format = LogFormat.CSV
     private var rotateBytes = 1024 * 1024
     private var lines = 0L
@@ -72,6 +74,10 @@ class LogStore(context: Context) {
         return mutex.withLock {
             if (paused.get() || generation.get() != gen) return@withLock lines
             withContext(Dispatchers.IO) {
+                // Rotate a slot that was already full when the app restarted.
+                // Otherwise the first resumed row is written to an old full
+                // file before the next ring slot is selected.
+                rotateIfNeeded()
                 val out = ensureWriter()
                 out.write(row)
                 unflushed++
@@ -88,10 +94,9 @@ class LogStore(context: Context) {
 
     fun currentFile(): File = File(dir, "fieldwatch-%03d.jsonl".format(index))
 
-    fun logParts(): List<File> = dir.listFiles()
-        ?.filter { it.isFile && it.name.startsWith("fieldwatch-") && !it.name.contains("export") }
-        ?.sortedBy { it.name }
-        ?: emptyList()
+    // Ring-slot numbers are circular. Use modification time for replay order,
+    // and only accept valid segment files (never temporary exports).
+    fun logParts(): List<File> = LogFileRing.orderedParts(dir)
 
     fun allFiles(): List<File> = logParts()
 
