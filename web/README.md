@@ -66,3 +66,9 @@ L'interface accepte les formats originaux Fieldwatch et ses propres exports Watc
 ## Publication Android stable
 
 La procédure de signature privée et de publication reproductible est dans [docs/watch-android-release.md](../docs/watch-android-release.md). Elle nécessite quatre secrets GitHub configurés une seule fois. En leur absence, seule l’APK de test provenant d’Android CI est disponible ; elle ne garantit pas les mises à jour sans réinstallation.
+
+## Importation optimisée pour Android
+
+Le décodage et le regroupement des journaux Wi-Fi/Bluetooth sont réalisés dans un **Web Worker dédié** lorsque le navigateur le permet, afin de ne pas bloquer les boutons et la navigation pendant le traitement de gros fichiers. Les fichiers restent sur l'appareil. La page ne conserve après import que les radios agrégées, le total d'observations et les comptages quotidiens ; les 250 000 observations brutes ne sont plus copiées dans l'interface. L'import de plusieurs fichiers est atomique : si un fichier est invalide, les données de la session précédente restent intactes. Les navigateurs sans module Worker conservent un mode de repli local.
+
+Les plafonds restent 20 fichiers par import, 40 Mo par fichier, 80 Mo au total et 250 000 observations. Le worker et son processeur sont préchargés pour une utilisation hors ligne après installation de la PWA.

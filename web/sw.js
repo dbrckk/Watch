@@ -1,10 +1,10 @@
 /* Explicit user-initiated local Android -> PWA share handoff.
    Only the share POST is accepted. It never reaches the static host. */
-const CACHE='watch-console-v4';
+const CACHE='watch-console-v5';
 const INBOX='watch-share-inbox-v1';
 const MAX_BYTES=40*1024*1024;
 const AGE_MS=10*60*1000;
-const ASSETS=['./','./index.html','./style.css','./app.mjs','./core.mjs','./manifest.webmanifest','./icon.svg','./icon-192.png'];
+const ASSETS=['./','./index.html','./style.css','./app.mjs','./core.mjs','./import-processor.mjs','./import-worker.mjs','./manifest.webmanifest','./icon.svg','./icon-192.png'];
 const shareTarget=new URL('./share-target',self.registration.scope).pathname;
 const shareKey=new URL('./__watch_incoming_file__',self.registration.scope).href;
 function redirect(params){return Response.redirect(new URL('./?'+params,self.registration.scope).href,303);}
