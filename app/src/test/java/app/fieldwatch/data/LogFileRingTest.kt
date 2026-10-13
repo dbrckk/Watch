@@ -57,13 +57,13 @@ class LogFileRingTest {
 
     @Test
     fun chronologicalReplayKeepsLatestSignalAfterCircularWrap() = withDir { dir, t ->
-        val header = "timestamp,iso,kind,mac,name,rssi,channel,freq,oui,vendor,fleets,mfg,uuids,flags,raw,lat,lon,vendor_ie\\n"
+        val header = "timestamp,iso,kind,mac,name,rssi,channel,freq,oui,vendor,fleets,mfg,uuids,flags,raw,lat,lon,vendor_ie\n"
         val old = part(dir, 11, "csv", t).apply {
-            writeText(header + "1000,iso,BLE,AA:BB:CC:DD:EE:01,Previous,-83,0,0,,,,,,,,,,\\n")
+            writeText(header + "1000,iso,BLE,AA:BB:CC:DD:EE:01,Previous,-83,0,0,,,,,,,,,,\n")
             assertTrue(setLastModified(t))
         }
         val fresh = part(dir, 0, "csv", t + 1000L).apply {
-            writeText(header + "2000,iso,BLE,AA:BB:CC:DD:EE:01,Latest,-51,0,0,,,,,,,,,,\\n")
+            writeText(header + "2000,iso,BLE,AA:BB:CC:DD:EE:01,Latest,-51,0,0,,,,,,,,,,\n")
             assertTrue(setLastModified(t + 1000L))
         }
         assertEquals(listOf(old, fresh), LogFileRing.orderedParts(dir))
