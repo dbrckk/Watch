@@ -96,3 +96,7 @@ Le dossier interne stocke douze segments numérotés `fieldwatch-000.jsonl` à `
 ## Fiabilité des observations Android
 
 La fusion des radios lors de la relecture ne dépend plus de l'ordre physique des fichiers : les informations variables (nom, RSSI, canal et coordonnées) sont retenues de la ligne ayant le timestamp le plus récent. Une observation plus ancienne peut seulement compléter un champ manquant et contribuer aux compteurs/historiques. Trois tests Kotlin couvrent l'ordre JSONL inversé, le CSV dans les deux ordres et les métadonnées manquantes. L'horodatage ISO des lignes est aussi construit sous le verrou d'écriture pour éviter la corruption lors de scans concurrents.
+
+## Cohérence du journal pendant un export
+
+Les nouvelles observations radio ne sont plus éliminées parce qu'un export est en cours : elles attendent le mutex d'export puis sont écrites. Une suppression explicite continue d'invalider les écritures préexistantes avec la génération du journal. Les coordonnées GPS sont validées comme une seule paire finie dans les limites WGS84 et ne sont jamais composées à partir de deux observations différentes. Trois tests Kotlin couvrent les données GPS incomplètes ou invalides. Le tampon d'entrée Android restant borné, cela ne supprime pas un éventuel risque de saturation en cas de scans plus rapides que leur traitement.
