@@ -2224,9 +2224,9 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         val file = File(dir, SitExport.suggestedName(kind, win.name, stamp))
         withContext(Dispatchers.IO) {
             file.writeText(text)
-            app.getExternalFilesDir(null)?.let { ext ->
-                runCatching { file.copyTo(File(ext, file.name), overwrite = true) }
-            }
+            // The explicit Save action writes user-selected durable files.
+            // Sharing should never silently duplicate GPS/radio logs in
+            // app-specific external storage.
         }
         return file to win.name
     }
@@ -2326,9 +2326,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                         app.logs.exportBundle(asJsonl = true, radios = radios, onProgress = ::reportCopy)
                     LogExportKind.GPX, LogExportKind.KML, LogExportKind.WIGLE -> writeMapExport(kind, radios)
                 }
-                app.getExternalFilesDir(null)?.let { ext ->
-                    runCatching { file.copyTo(File(ext, file.name), overwrite = true) }
-                }
+                // Do not silently archive every shared log. Use Save to Uri
+                // when a durable user-chosen copy is required.
                 val uri: Uri = FileProvider.getUriForFile(app, "${app.packageName}.files", file)
                 Intent(Intent.ACTION_SEND).apply {
                     type = exportMime()
@@ -2389,9 +2388,9 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         val file = File(dir, GeoExport.suggestedName(fmt, stamp))
         withContext(Dispatchers.IO) {
             file.writeText(text)
-            app.getExternalFilesDir(null)?.let { ext ->
-                runCatching { file.copyTo(File(ext, file.name), overwrite = true) }
-            }
+            // The explicit Save action writes user-selected durable files.
+            // Sharing should never silently duplicate GPS/radio logs in
+            // app-specific external storage.
         }
         return file
     }
