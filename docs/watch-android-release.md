@@ -6,6 +6,18 @@ Ce document concerne uniquement le fork Watch (package Android : app.watch.field
 
 Les APK de debug compilées par GitHub Actions utilisent une clé temporaire propre à l'environnement de build. Une APK compilée plus tard peut alors nécessiter une désinstallation préalable et effacer les données. Les versions de publication nécessitent une **clé privée de signature persistante**. Le workflow de publication vérifie cette signature avant de publier.
 
+## Configuration simplifiée depuis Android (Termux)
+
+La préparation des quatre secrets peut maintenant être exécutée **sur ton propre appareil**, sans les copier dans une discussion ou un fichier du dépôt :
+
+1. Depuis Termux, exécute `pkg update && pkg install gh openjdk-17 coreutils curl`.
+2. Connecte ton compte GitHub avec `gh auth login` et termine l'authentification dans le navigateur.
+3. Récupère le script : `curl -fL https://raw.githubusercontent.com/dbrckk/Watch/main/scripts/setup-watch-signing.sh -o setup-watch-signing.sh`. Tu peux examiner le script avant son exécution.
+4. Exécute `bash setup-watch-signing.sh` et entre un mot de passe fort deux fois. Le script crée un keystore privé, le valide puis envoie les quatre valeurs à GitHub Actions avec le CLI officiel. Aucun mot de passe ou contenu de clé ne s'affiche.
+5. Sauvegarde **hors de Termux et hors de GitHub** ton keystore indiqué par le script, ainsi que son mot de passe **à un endroit séparé**. Termux peut être désinstallé ou ses données effacées.
+
+Le script refuse de réécrire une clé déjà existante : s'il est relancé après une erreur réseau, il utilise **la même identité de signature**. Il refuse également un mot de passe erroné et ne lance aucune publication automatiquement. Les tests utilisent des imitations locales de `gh` et `keytool` : aucune vraie clé n'est générée durant ces tests.
+
 ## Première configuration, une seule fois
 
 Sur Android avec Termux, installer les outils :
