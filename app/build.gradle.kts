@@ -28,15 +28,20 @@ android {
         applicationId = "app.watch.fieldwatch"
         minSdk = 29
         targetSdk = 35
-        versionCode = 36
-        versionName = "1.1.26-watch.1"
+        versionCode = 37
+        versionName = "1.1.26-watch.2"
         vectorDrawables.useSupportLibrary = true
     }
 
-    val releaseStore = localProp("FIELDWATCH_STORE_FILE")
-    val releaseStorePassword = localProp("FIELDWATCH_STORE_PASSWORD")
-    val releaseKeyAlias = localProp("FIELDWATCH_KEY_ALIAS")
-    val releaseKeyPassword = localProp("FIELDWATCH_KEY_PASSWORD")
+    // Fork-specific signing identity. Never reuse the original publisher's
+    // certificate; keep the same WATCH_* key between our own releases.
+    fun signingProp(env: String, local: String): String? =
+        System.getenv(env)?.takeIf { it.isNotBlank() } ?: localProp(local)
+
+    val releaseStore = signingProp("WATCH_KEYSTORE_FILE", "WATCH_KEYSTORE_FILE")
+    val releaseStorePassword = signingProp("WATCH_STORE_PASSWORD", "WATCH_STORE_PASSWORD")
+    val releaseKeyAlias = signingProp("WATCH_KEY_ALIAS", "WATCH_KEY_ALIAS")
+    val releaseKeyPassword = signingProp("WATCH_KEY_PASSWORD", "WATCH_KEY_PASSWORD")
     val hasReleaseSigning =
         releaseStore != null &&
             releaseStorePassword != null &&

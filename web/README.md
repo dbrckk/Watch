@@ -58,3 +58,11 @@ L'identifiant Android du fork est `app.watch.fieldwatch` et son libellé « Watc
 - L'URL interne du cache de réception ne peut plus être lue par une requête GET interceptée par le service worker ; seules les ressources publiques du cache statique sont servies.
 - Le rendu des positions GPS utilise des bornes géographiques calculées en O(n) sans spread et un échantillonnage de dessin plafonné à 12 000 points, pour supporter les gros journaux.
 - Les horodatages hors limites ne provoquent plus d'exception lors d'un export CSV.
+
+## Fidélité export → réimport
+
+L'interface accepte les formats originaux Fieldwatch et ses propres exports Watch. Les colonnes CSV `firstSeen`/`lastSeen`, normalisées en minuscules par le parseur, ainsi que les coordonnées `position.lat/lon` des JSON Watch, sont préservées à la réimportation. Des tests de régression contrôlent aussi que les exports masqués ne réintroduisent pas les positions GPS.
+
+## Publication Android stable
+
+La procédure de signature privée et de publication reproductible est dans [docs/watch-android-release.md](../docs/watch-android-release.md). Elle nécessite quatre secrets GitHub configurés une seule fois. En leur absence, seule l’APK de test provenant d’Android CI est disponible ; elle ne garantit pas les mises à jour sans réinstallation.

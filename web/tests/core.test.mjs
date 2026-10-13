@@ -73,3 +73,35 @@ test('invalid timestamp is ignored instead of crashing CSV exports', () => {
   assert.equal(x.records[0].lastSeen,null);
   assert.doesNotThrow(()=>toCsv(x.records));
 });
+
+test('Watch CSV export can be re-imported without losing dates or GPS', () => {
+  const raw = parseInput('source.jsonl',
+    '{"ts":1760200200000,"kind":"WIFI","mac":"AA:BB:CC:DD:EE:FF","name":"AP","rssi":-61,"lat":46.78,"lon":4.85}\n');
+  const devices = aggregate(raw.records);
+  const imported = parseInput('watch.csv', toCsv(exportDevices(devices,false)));
+  assert.equal(imported.records.length,1);
+  const observed=imported.records[0];
+  assert.equal(observed.lastSeen,1760200200000);
+  assert.equal(observed.firstSeen,1760200200000);
+  assert.deepEqual(observed.position,{lat:46.78,lon:4.85});
+  assert.equal(observed.mac,'AA:BB:CC:DD:EE:FF');
+});
+
+test('Watch JSON export preserves timestamps and coordinates on re-import', () => {
+  const raw = parseInput('source.jsonl',
+    '{"ts":1760200200000,"kind":"BLE","mac":"AA:BB:CC:DD:EE:FF","rssi":-70,"lat":46.78,"lon":4.85}\n');
+  const safe = exportDevices(aggregate(raw.records),false);
+  const imported = parseInput('watch.json',JSON.stringify({devices:safe,privacyMasked:false}));
+  assert.equal(imported.records[0].lastSeen,1760200200000);
+  assert.deepEqual(imported.records[0].position,{lat:46.78,lon:4.85});
+  assert.equal(imported.records[0].kind,'BLE');
+});
+
+test('private JSON exports must remain without GPS after re-import', () => {
+  const raw = aggregate(parseInput('source.json',JSON.stringify([
+    {kind:'BLE',mac:'AA:BB:CC:DD:EE:FF',lat:46.78,lon:4.85,ts:1760200200000}
+  ])).records);
+  const incoming = parseInput('safe.json', JSON.stringify({devices:exportDevices(raw,true)}));
+  assert.equal(incoming.records[0].position,null);
+  assert.notEqual(incoming.records[0].mac,'AA:BB:CC:DD:EE:FF');
+});

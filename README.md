@@ -6,6 +6,7 @@
 - **Application Android Watch Fieldwatch** : identifiant séparé `app.watch.fieldwatch`, coexistence possible avec `app.fieldwatch` officiel et stockage des journaux distinct.
 - **Transfert Android → Web (nouveau build uniquement)** : depuis Reports, l'utilisateur confirme le partage et choisit la PWA installée dans le menu Android. Aucun flux en arrière-plan.
 - **Documentation** : [web/README.md](web/README.md). Le code d'origine complet figure ci-dessous.
+- **Publication signée du fork** : [instructions](docs/watch-android-release.md), avec sauvegarde privée obligatoire de la clé.
 - **APK dans `dist/Fieldwatch.apk`** : fichier **importé depuis le projet d'origine**, ne contenant pas le bouton Watch web. Pour installer notre fork, utilisez l'APK compilée par GitHub Actions après succès de la CI. Il ne s'agit pas d'une signature officielle.
 
 ---
