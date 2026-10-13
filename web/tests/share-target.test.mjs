@@ -31,14 +31,19 @@ function makeWorker(){
     fetch:async()=>{throw new Error('Unexpected network request');}
   };
   runInNewContext(script,context);
-  async function share(form){
-    const request=new Request('https://watch.example/share-target',{method:'POST',body:form});
+  async function dispatch(request){
     let result;
-    listeners.fetch({request,respondWith:promise=>{result=promise;}});
-    if(!result)throw new Error('The worker did not intercept POST');
+    listeners.fetch({request,respondWith:promise=>{result=promise;},waitUntil:()=>{}});
+    if(!result)throw new Error('The worker did not intercept '+request.method);
     return await result;
   }
-  return {share,entries};
+  async function share(form){
+    return dispatch(new Request('https://watch.example/share-target',{method:'POST',body:form}));
+  }
+  async function getInbox(){
+    return dispatch(new Request('https://watch.example/__watch_incoming_file__'));
+  }
+  return {share,getInbox,entries};
 }
 test('share_target declares a file POST with matching field',()=>{
   assert.equal(manifest.share_target.method,'POST');
@@ -72,4 +77,14 @@ test('invalid extensions and zero-byte files fail closed',async()=>{
     assert.match(r.headers.get('location'),/shared=error/);
     assert.equal(worker.entries.size,0);
   }
+});
+
+test('private inbox is never exposed by service worker GET',async()=>{
+  const worker=makeWorker(),form=new FormData();
+  form.append('log',new File(['{"kind":"BLE","mac":"secret"}'],'fieldwatch.jsonl'));
+  await worker.share(form);
+  assert.equal(worker.entries.size,1);
+  const response=await worker.getInbox();
+  assert.equal(response.status,404);
+  assert.doesNotMatch(await response.text(),/secret/);
 });

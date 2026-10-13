@@ -8,9 +8,12 @@ function number(value) {
 
 function dateMs(raw) {
   const n = number(raw);
-  if (n !== null) return n < 1e11 && n > 0 ? n * 1000 : n;
+  if (n !== null) {
+    const ms = n < 1e11 && n > 0 ? n * 1000 : n;
+    return Math.abs(ms) <= 8640000000000000 ? ms : null;
+  }
   const p = Date.parse(String(raw || ''));
-  return Number.isFinite(p) ? p : null;
+  return Number.isFinite(p) && Math.abs(p) <= 8640000000000000 ? p : null;
 }
 
 function clean(v, max = 250) {
@@ -171,4 +174,29 @@ export function summary(devices, observations) {
   const signal = devices.filter(x => x.rssi !== null).sort((a,b) => b.rssi - a.rssi)[0] || null;
   const last = devices.reduce((m,d) => Math.max(m, d.lastSeen || 0), 0);
   return {total: devices.length, wifi, ble, geotagged, signal, last, observations};
+}
+
+/**
+ * Export only the public record fields. An internal kind:MAC key must never
+ * reveal the unmasked address in a supposedly private JSON export.
+ */
+export function exportDevices(devices, privacy = true) {
+  return devices.map(({key,mac,position,...fields}) => ({
+    ...fields,
+    mac: privacy ? (mac.length < 6 ? '••••' : mac.slice(0,5) + '••:••') : mac,
+    position: privacy ? null : (position ?? null),
+  }));
+}
+
+/** O(n) geographic bounds without argument-spread limits on large imports. */
+export function geographicBounds(points) {
+  let minLat=Infinity,maxLat=-Infinity,minLon=Infinity,maxLon=-Infinity,count=0;
+  for (const p of points) {
+    const loc=p?.position ?? p;
+    if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lon)) continue;
+    minLat=Math.min(minLat,loc.lat);maxLat=Math.max(maxLat,loc.lat);
+    minLon=Math.min(minLon,loc.lon);maxLon=Math.max(maxLon,loc.lon);
+    count++;
+  }
+  return count ? {minLat,maxLat,minLon,maxLon,count} : null;
 }

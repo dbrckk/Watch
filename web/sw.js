@@ -1,6 +1,6 @@
 /* Explicit user-initiated local Android -> PWA share handoff.
    Only the share POST is accepted. It never reaches the static host. */
-const CACHE='watch-console-v2';
+const CACHE='watch-console-v3';
 const INBOX='watch-share-inbox-v1';
 const MAX_BYTES=40*1024*1024;
 const AGE_MS=10*60*1000;
@@ -48,13 +48,20 @@ self.addEventListener('fetch',event=>{
     return;
   }
   if(event.request.method!=='GET')return;
+  // Never serve the temporary radio/GPS inbox via a normal GET request.
+  if(url.pathname===new URL(shareKey).pathname){
+    event.respondWith(new Response('Not Found',{status:404,headers:{'Content-Type':'text/plain'}}));
+    return;
+  }
+  if(event.request.mode==='navigate')event.waitUntil?.(expirePending());
   event.respondWith((async()=>{
-    const cached=await caches.match(event.request);
+    const assetCache=await caches.open(CACHE);
+    const cached=await assetCache.match(event.request);
     if(cached)return cached;
     try{return await fetch(event.request);}
     catch{
       if(event.request.mode==='navigate'){
-        const fallback=await caches.match('./index.html');
+        const fallback=await assetCache.match(new URL('./index.html',self.registration.scope).href);
         if(fallback)return fallback;
       }
       return new Response('Offline',{status:503,headers:{'Content-Type':'text/plain'}});
