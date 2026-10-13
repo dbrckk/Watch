@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "watch-browser-smoke",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Real-browser smoke tests only; no runtime dependency",
+  "dependencies": {
+    "playwright-core": "1.56.0"
+  }
+}
