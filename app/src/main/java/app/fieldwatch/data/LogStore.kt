@@ -70,10 +70,12 @@ class LogStore(context: Context) {
         if (!enabled || paused.get()) return lines
         val gen = generation.get()
         val names = fleets.filter { it.id in device.fleetIds }.joinToString("+") { it.name }
-        val row = jsonLine(device, names)
         return mutex.withLock {
             if (paused.get() || generation.get() != gen) return@withLock lines
             withContext(Dispatchers.IO) {
+                // jsonLine uses a shared SimpleDateFormat; construct the row
+                // under the mutex so concurrent scans cannot corrupt ISO time.
+                val row = jsonLine(device, names)
                 // Rotate a slot that was already full when the app restarted.
                 // Otherwise the first resumed row is written to an old full
                 // file before the next ring slot is selected.
