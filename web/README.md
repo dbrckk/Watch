@@ -104,3 +104,7 @@ Les nouvelles observations radio ne sont plus éliminées parce qu'un export est
 ## Import des relevés géographiques WiGLE
 
 Les exports **Geo → WiGLE CSV** produits par l'application Android Fieldwatch comportent les colonnes `FirstSeen`, `CurrentLatitude`, `CurrentLongitude` et `Type`, mais pas de colonne `timestamp`. Watch utilise désormais `FirstSeen` comme horodatage de l'observation (première et dernière date lorsque cette dernière n'est pas fournie). Le format `yyyy-MM-dd HH:mm:ss` écrit par Fieldwatch est interprété en **UTC**, conformément au code `GeoExport.kt`, et non selon le fuseau du navigateur. Les radios Wi-Fi et BLE, le RSSI, les canaux, les SSID comportant des virgules et les coordonnées GPS sont préservés. Des tests unitaires et Chromium vérifient que les jours de la chronologie restent corrects.
+
+## Cohérence du signal RSSI entre Android et Web
+
+Lors d'une importation, Watch Web conserve pour chaque radio le **RSSI de la dernière observation horodatée**, et non la valeur la plus forte d'un ancien relevé. Le tri « Signal » s'appuie sur cette mesure récente. Les journaux peuvent être lus dans n'importe quel ordre : des lignes plus anciennes ne remplacent pas les informations courantes, mais peuvent compléter les champs manquants. Les détails affichent explicitement « Dernier RSSI observé ». Ce comportement correspond au moteur Android. Des tests unitaires et Chromium contrôlent les régressions.

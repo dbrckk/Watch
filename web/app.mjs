@@ -53,7 +53,7 @@ function openRadio(d) {
   const fields = [
     ['Type',d.kind === 'BLE' ? 'Bluetooth LE' : 'Wi-Fi'],
     ['Identifiant',shortId(d.mac)],['Fabricant',d.vendor || 'Non identifié'],
-    ['Meilleur RSSI',d.rssi === null ? 'Inconnu' : d.rssi + ' dBm'],
+    ['Dernier RSSI observé',d.rssi === null ? 'Inconnu' : d.rssi + ' dBm'],
     ['Première observation',prettyDate(d.firstSeen)],
     ['Dernière observation',prettyDate(d.lastSeen)],
     ['Occurrences dans les exports',d.hits],
