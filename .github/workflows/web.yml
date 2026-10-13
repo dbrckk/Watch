@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - 'web/**'
+      - 'scripts/**'
+      - '.github/workflows/android-release.yml'
       - '.github/workflows/web.yml'
   pull_request:
     paths:
       - 'web/**'
+      - 'scripts/**'
+      - '.github/workflows/android-release.yml'
       - '.github/workflows/web.yml'
   workflow_dispatch:
 
@@ -33,6 +37,8 @@ jobs:
           node --check web/sw.js
       - name: Check Fieldwatch import logic
         run: node --test web/tests/*.test.mjs
+      - name: Test signed Android upgrade compatibility (offline mocks)
+        run: bash scripts/tests/verify-android-release.sh
       - name: Verify required static files
         run: |
           test -s web/index.html

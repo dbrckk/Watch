@@ -58,3 +58,7 @@ Une ancienne APK de test (signée par une clé de debug différente) ne peut gé
 ## Contrôles
 
 Le workflow utilise Gradle testDebugUnitTest et assembleRelease, puis apksigner verify, aapt pour le package et sha256sum pour l'intégrité. Une validation sur un téléphone Android reste nécessaire pour les autorisations Wi-Fi/BLE et le partage vers Watch web.
+
+## Protection des mises à jour signées
+
+Avant toute publication, le workflow exécute `scripts/verify-android-release.sh` pour vérifier la signature cryptographique de l'APK, son identifiant `app.watch.fieldwatch`, et l'égalité de son `versionName` avec le tag. À partir de la deuxième release, le workflow télécharge l'APK précédente et refuse toute signature différente ou un `versionCode` inférieur ou égal. Une panne GitHub ou l'absence d'APK précédente est traitée comme un échec, pas comme une première publication. Les notes de chaque release affichent uniquement l'empreinte publique SHA-256 du certificat et le `versionCode`, jamais la clé privée. Des tests simulés de ces cas sont exécutés dans `Web checks`.
