@@ -155,23 +155,34 @@ object LogReplay {
             acc[row.key] = row
             return
         }
+        // Segments are replayed in filesystem modification order, which can
+        // differ from the timestamp order of individual radio sightings (clock
+        // changes, buffered writes, legacy imports). An older sighting must not
+        // overwrite the most recent RSSI, SSID, channel or location.
+        val rowIsNewest = row.lastSeen >= prev.lastSeen
+        val newest = if (rowIsNewest) row else prev
+        val older = if (rowIsNewest) prev else row
         acc[row.key] = prev.copy(
-            name = row.name.ifBlank { prev.name },
-            vendor = row.vendor ?: prev.vendor,
-            manufacturerId = row.manufacturerId ?: prev.manufacturerId,
-            manufacturerDataHex = row.manufacturerDataHex.ifBlank { prev.manufacturerDataHex },
+            name = newest.name.ifBlank { older.name },
+            vendor = newest.vendor ?: older.vendor,
+            manufacturerId = newest.manufacturerId ?: older.manufacturerId,
+            manufacturerDataHex = newest.manufacturerDataHex.ifBlank { older.manufacturerDataHex },
             serviceUuids = (prev.serviceUuids + row.serviceUuids).distinct(),
             vendorIeOuis = (prev.vendorIeOuis + row.vendorIeOuis).distinct(),
             randomized = prev.randomized || row.randomized,
             hiddenSsid = prev.hiddenSsid || row.hiddenSsid,
-            rssi = row.rssi,
-            firstSeen = if (prev.firstSeen == 0L) row.firstSeen else minOf(prev.firstSeen, row.firstSeen),
+            rssi = newest.rssi,
+            firstSeen = when {
+                prev.firstSeen == 0L -> row.firstSeen
+                row.firstSeen == 0L -> prev.firstSeen
+                else -> minOf(prev.firstSeen, row.firstSeen)
+            },
             lastSeen = maxOf(prev.lastSeen, row.lastSeen),
             hits = prev.hits + row.hits,
-            channel = if (row.channel != 0) row.channel else prev.channel,
-            frequencyMhz = if (row.frequencyMhz != 0) row.frequencyMhz else prev.frequencyMhz,
-            latitude = row.latitude ?: prev.latitude,
-            longitude = row.longitude ?: prev.longitude,
+            channel = newest.channel.takeIf { it != 0 } ?: older.channel,
+            frequencyMhz = newest.frequencyMhz.takeIf { it != 0 } ?: older.frequencyMhz,
+            latitude = newest.latitude ?: older.latitude,
+            longitude = newest.longitude ?: older.longitude,
         )
     }
 

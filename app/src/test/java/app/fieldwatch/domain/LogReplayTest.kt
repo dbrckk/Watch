@@ -138,6 +138,51 @@ class LogReplayTest {
     }
 
     @Test
+    fun staleJsonRowCannotOverwriteNewerRadioProperties() {
+        val newest = """{"ts":2000,"kind":"BLE","mac":"AA:BB:CC:DD:EE:09","name":"New label","rssi":-48,"channel":8,"freq":2480,"lat":46.7,"lon":4.8,"uuids":"abcd"}"""
+        val older = """{"ts":1000,"kind":"BLE","mac":"AA:BB:CC:DD:EE:09","name":"Old label","rssi":-91,"channel":2,"freq":2407,"lat":44.0,"lon":1.0,"uuids":"def0"}"""
+        val radio = LogReplay.parse(newest + "\n" + older).single()
+        assertEquals("New label", radio.name)
+        assertEquals(-48, radio.rssi)
+        assertEquals(8, radio.channel)
+        assertEquals(2480, radio.frequencyMhz)
+        assertEquals(46.7, radio.latitude!!, 0.001)
+        assertEquals(4.8, radio.longitude!!, 0.001)
+        assertEquals(1000L, radio.firstSeen)
+        assertEquals(2000L, radio.lastSeen)
+        assertEquals(2, radio.hits)
+        assertEquals(listOf("abcd", "def0"), radio.serviceUuids)
+    }
+
+    @Test
+    fun newestCsvRowWinsRegardlessOfInputOrder() {
+        fun row(ts: Long, name: String, rssi: Int, lat: String) =
+            listOf(ts, "iso", "WIFI", "00:11:22:33:44:55", name, rssi, 6, 2437,
+                "", "", "", "", "", "", "", lat, "4.9", "").joinToString(",")
+        val old = row(1000, "Old", -99, "41.1")
+        val recent = row(3000, "New", -30, "46.8")
+        for (ordered in listOf(listOf(old, recent), listOf(recent, old))) {
+            val radio = LogReplay.parse(csvHeader + ordered.joinToString("\n")).single()
+            assertEquals("New", radio.name)
+            assertEquals(-30, radio.rssi)
+            assertEquals(3000L, radio.lastSeen)
+            assertEquals(1000L, radio.firstSeen)
+            assertEquals(46.8, radio.latitude!!, 0.001)
+            assertEquals(2, radio.hits)
+        }
+    }
+
+    @Test
+    fun olderRowFillsMetadataOnlyWhenNewerRowIsMissingIt() {
+        val newest = """{"ts":3000,"kind":"BLE","mac":"AA:BB:CC:DD:EE:09","rssi":-40,"name":""}"""
+        val old = """{"ts":2000,"kind":"BLE","mac":"AA:BB:CC:DD:EE:09","rssi":-80,"name":"Recognized"}"""
+        val result = LogReplay.parse(newest + "\n" + old).single()
+        assertEquals("Recognized", result.name)
+        assertEquals(-40, result.rssi)
+        assertEquals(3000L, result.lastSeen)
+    }
+
+    @Test
     fun emptyInputGivesEmptyList() {
         assertTrue(LogReplay.parse("").isEmpty())
         assertTrue(LogReplay.parse("\n\n").isEmpty())

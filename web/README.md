@@ -92,3 +92,7 @@ L'action explicite « Effacer les journaux » supprime aussi les exports radio t
 ## Fiabilité de la rotation des journaux Android
 
 Le dossier interne stocke douze segments numérotés `fieldwatch-000.jsonl` à `fieldwatch-011.jsonl`. Ils forment un anneau : leur ordre numérique **n'est pas** leur ordre d'enregistrement. L'application retrouve désormais au démarrage le segment JSONL modifié le plus récemment, et ordonne les relectures par modification réelle. Si le dernier fichier était déjà plein, une nouvelle tranche est sélectionnée **avant** l'ajout d'une observation. Les exports temporaires et les fichiers mal nommés ne sont pas interprétés comme des segments. Ces comportements sont vérifiés avec des fichiers réels créés dans les tests Kotlin.
+
+## Fiabilité des observations Android
+
+La fusion des radios lors de la relecture ne dépend plus de l'ordre physique des fichiers : les informations variables (nom, RSSI, canal et coordonnées) sont retenues de la ligne ayant le timestamp le plus récent. Une observation plus ancienne peut seulement compléter un champ manquant et contribuer aux compteurs/historiques. Trois tests Kotlin couvrent l'ordre JSONL inversé, le CSV dans les deux ordres et les métadonnées manquantes. L'horodatage ISO des lignes est aussi construit sous le verrou d'écriture pour éviter la corruption lors de scans concurrents.
