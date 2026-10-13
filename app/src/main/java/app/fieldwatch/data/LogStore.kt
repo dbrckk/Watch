@@ -67,11 +67,14 @@ class LogStore(context: Context) {
     }
 
     suspend fun append(device: Sighting, fleets: List<Fleet>): Long {
-        if (!enabled || paused.get()) return lines
+        // Exports already hold mutex: incoming radio sightings should wait,
+        // rather than disappear while the user shares a log.
+        if (!enabled) return lines
         val gen = generation.get()
         val names = fleets.filter { it.id in device.fleetIds }.joinToString("+") { it.name }
         return mutex.withLock {
-            if (paused.get() || generation.get() != gen) return@withLock lines
+            // Explicit clear invalidates old queued writes; export does not.
+            if (!enabled || generation.get() != gen) return@withLock lines
             withContext(Dispatchers.IO) {
                 // jsonLine uses a shared SimpleDateFormat; construct the row
                 // under the mutex so concurrent scans cannot corrupt ISO time.

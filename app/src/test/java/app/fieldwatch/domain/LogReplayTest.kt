@@ -183,6 +183,42 @@ class LogReplayTest {
     }
 
     @Test
+    fun incompleteGpsFixesNeverCombineDifferentObservations() {
+        val newer = """{"ts":2000,"kind":"BLE","mac":"AA:BB:CC:00:00:10","lat":46.7,"rssi":-40}"""
+        val older = """{"ts":1000,"kind":"BLE","mac":"AA:BB:CC:00:00:10","lon":4.8,"rssi":-60}"""
+        for (text in listOf(newer + "\n" + older, older + "\n" + newer)) {
+            val radio = LogReplay.parse(text).single()
+            assertNull(radio.latitude)
+            assertNull(radio.longitude)
+            assertTrue(!radio.hasPosition)
+            assertEquals(-40, radio.rssi)
+        }
+    }
+
+    @Test
+    fun invalidCoordinatesCannotOverwriteOlderValidFix() {
+        val valid = """{"ts":1000,"kind":"WIFI","mac":"AA:BB:CC:00:00:11","lat":46.7,"lon":4.8}"""
+        val impossible = """{"ts":2000,"kind":"WIFI","mac":"AA:BB:CC:00:00:11","lat":190.0,"lon":5.0}"""
+        val radio = LogReplay.parse(impossible + "\n" + valid).single()
+        assertEquals(46.7, radio.latitude!!, 0.001)
+        assertEquals(4.8, radio.longitude!!, 0.001)
+        assertEquals(2000L, radio.lastSeen)
+        assertTrue(radio.hasPosition)
+    }
+
+    @Test
+    fun invalidGpsInCsvIsDiscardedAsAnAtomicPair() {
+        val row = listOf(
+            "3000", "iso", "BLE", "AA:BB:CC:00:00:12", "Tag", "-60", "0", "0",
+            "", "", "", "", "", "", "", "NaN", "4.8", ""
+        ).joinToString(",")
+        val out = LogReplay.parse(csvHeader + row).single()
+        assertNull(out.latitude)
+        assertNull(out.longitude)
+        assertTrue(!out.hasPosition)
+    }
+
+    @Test
     fun emptyInputGivesEmptyList() {
         assertTrue(LogReplay.parse("").isEmpty())
         assertTrue(LogReplay.parse("\n\n").isEmpty())

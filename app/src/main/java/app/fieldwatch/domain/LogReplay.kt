@@ -64,6 +64,14 @@ object LogReplay {
         }
     }
 
+    // A GPS fix is an indivisible pair. Never mix latitude from one
+    // observation with longitude from another. Reject invalid WGS84 values.
+    private fun validatedPosition(latitude: Double?, longitude: Double?): Pair<Double, Double>? =
+        if (latitude != null && longitude != null &&
+            latitude.isFinite() && longitude.isFinite() &&
+            latitude in -90.0..90.0 && longitude in -180.0..180.0
+        ) latitude to longitude else null
+
     private fun ingestCsv(line: String, header: List<String>, acc: MutableMap<String, LogRadio>) {
         val cols = line.split(',')
         fun col(name: String): String {
@@ -81,6 +89,7 @@ object LogReplay {
         val mfgRaw = col("mfg").trim()
         val mfg = mfgRaw.toIntOrNull(16) ?: mfgRaw.toIntOrNull()
         val ts = col("timestamp").toLongOrNull() ?: 0L
+        val position = validatedPosition(col("lat").toDoubleOrNull(), col("lon").toDoubleOrNull())
         merge(
             acc,
             LogRadio(
@@ -100,8 +109,8 @@ object LogReplay {
                 hits = 1,
                 channel = col("channel").toIntOrNull() ?: 0,
                 frequencyMhz = col("freq").toIntOrNull() ?: 0,
-                latitude = col("lat").toDoubleOrNull(),
-                longitude = col("lon").toDoubleOrNull(),
+                latitude = position?.first,
+                longitude = position?.second,
             ),
         )
     }
@@ -124,6 +133,10 @@ object LogReplay {
         }
         val ts = obj.optLong("ts", 0L)
         val rand = obj.optBoolean("rand", MacUtil.isRandomized(mac))
+        val position = validatedPosition(
+            obj.optDouble("lat").takeIf { obj.has("lat") && !obj.isNull("lat") },
+            obj.optDouble("lon").takeIf { obj.has("lon") && !obj.isNull("lon") },
+        )
         merge(
             acc,
             LogRadio(
@@ -143,8 +156,8 @@ object LogReplay {
                 hits = 1,
                 channel = obj.optInt("channel", 0),
                 frequencyMhz = obj.optInt("freq", 0),
-                latitude = obj.optDouble("lat").takeIf { obj.has("lat") && !obj.isNull("lat") },
-                longitude = obj.optDouble("lon").takeIf { obj.has("lon") && !obj.isNull("lon") },
+                latitude = position?.first,
+                longitude = position?.second,
             ),
         )
     }
@@ -162,6 +175,8 @@ object LogReplay {
         val rowIsNewest = row.lastSeen >= prev.lastSeen
         val newest = if (rowIsNewest) row else prev
         val older = if (rowIsNewest) prev else row
+        val position = validatedPosition(newest.latitude, newest.longitude)
+            ?: validatedPosition(older.latitude, older.longitude)
         acc[row.key] = prev.copy(
             name = newest.name.ifBlank { older.name },
             vendor = newest.vendor ?: older.vendor,
@@ -181,8 +196,8 @@ object LogReplay {
             hits = prev.hits + row.hits,
             channel = newest.channel.takeIf { it != 0 } ?: older.channel,
             frequencyMhz = newest.frequencyMhz.takeIf { it != 0 } ?: older.frequencyMhz,
-            latitude = newest.latitude ?: older.latitude,
-            longitude = newest.longitude ?: older.longitude,
+            latitude = position?.first,
+            longitude = position?.second,
         )
     }
 
