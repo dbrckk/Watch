@@ -30,7 +30,7 @@ object ExportCacheRetention {
             val timestamp = file.lastModified()
             // Clock skew or a failed timestamp read must not silently force
             // deletion of a newly created share.
-            val age = if (timestamp in 1..now) now - timestamp else 0L
+            val age = if (timestamp in 1L..now) now - timestamp else 0L
             val stale = age > DAY_MS
             val surplus = index >= MAX_FILES && age > GRACE_MS
             if ((stale || surplus) && file.delete()) removed++
