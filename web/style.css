@@ -3,3 +3,28 @@
 @media(max-width:1000px){.app-shell{grid-template-columns:1fr}.sidebar{position:static;width:100%;height:auto;padding:13px 16px;border-right:0;border-bottom:1px solid var(--border)}.brand{padding:0 0 12px}.sidebar-footer,.nav-caption{display:none}.navigation{display:flex;overflow-x:auto}.nav-link{width:auto;white-space:nowrap;padding:10px 12px;font-size:12px}.nav-link span{font-size:16px;width:auto}.overview-grid{grid-template-columns:1fr}.topbar{min-height:auto;padding-top:20px;padding-bottom:20px}}
 @media(max-width:650px){.topbar{align-items:start;flex-direction:column;gap:15px}.top-actions{width:100%;justify-content:space-between}.intro{padding:28px 22px;min-height:205px}.intro-graphic{position:absolute;right:-70px;opacity:.4}.intro h2{font-size:26px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{padding:16px;min-height:128px}.metric strong{font-size:29px}.surface{padding:17px}.section-heading{align-items:start}.tiny-tag{font-size:9px}.view-heading{align-items:start;flex-direction:column}.guide-grid{grid-template-columns:1fr}.radio-extra small{font-size:10px}.details-grid{grid-template-columns:1fr}.map-surface canvas{height:340px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* The native modal must remain fully within Android's visual viewport.
+   A fixed-height scroll container and a raised close hit target prevent
+   dialog descendants from intercepting taps on short phone screens. */
+dialog:modal {
+  position:fixed;
+  max-height:calc(100dvh - 24px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+dialog:modal .dialog-top {
+  position:sticky;
+  top:0;
+  background:var(--surface);
+  z-index:2;
+  padding:3px 0 10px;
+}
+dialog:modal #close-dialog {
+  position:relative;
+  z-index:3;
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
+  touch-action:manipulation;
+}
