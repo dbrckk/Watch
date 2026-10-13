@@ -1,7 +1,8 @@
-import {parseInput,aggregate,selectDevices,toCsv,summary,exportDevices,geographicBounds} from './core.mjs';
+import {selectDevices,toCsv,summary,exportDevices,geographicBounds} from './core.mjs';
+import {processFiles} from './import-processor.mjs';
 
 const $ = id => document.getElementById(id);
-const state = {records:[],devices:[],files:[],privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview'};
+const state = {observations:0,dailyCounts:[],devices:[],files:[],importing:false,privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview'};
 const titles = {overview:"Vue d'ensemble",devices:"Observations",map:"Positions",guide:"Guide & sécurité"};
 
 function element(tag, cls, text) {
@@ -72,7 +73,7 @@ function openRadio(d) {
 function metric(id, value) { $(id).textContent = state.files.length ? String(value) : '—'; }
 function currentDevices() { return selectDevices(state.devices,state.query,state.filter,state.sort); }
 function renderOverview() {
-  const s=summary(state.devices,state.records.length);
+  const s=summary(state.devices,state.observations);
   metric('metric-total',s.total);
   metric('metric-wifi',s.wifi);
   metric('metric-ble',s.ble);
@@ -84,21 +85,17 @@ function renderOverview() {
   for (const d of all) recent.append(createRow(d));
   const timeline=$('timeline');
   timeline.replaceChildren();
-  const valid=state.records.filter(d=>d.lastSeen && Number.isFinite(d.lastSeen) && Math.abs(d.lastSeen)<=8640000000000000);
-  if (!valid.length) {
+  if (!state.dailyCounts.length) {
     timeline.classList.add('empty-chart');
     timeline.append(element('p','','La chronologie apparaîtra après importation de données horodatées.'));
     $('timeline-range').textContent='Aucune donnée';
     return;
   }
   timeline.classList.remove('empty-chart');
-  const counts=new Map();
-  for (const d of valid) {
-    const date=new Date(d.lastSeen).toISOString().slice(0,10);
-    counts.set(date,(counts.get(date)||0)+1);
-  }
-  const dates=[...counts.keys()].sort().slice(-10);
-  const max=Math.max(...dates.map(d=>counts.get(d)));
+  const days=state.dailyCounts.slice(-10);
+  const counts=new Map(days.map(item=>[item.date,item.count]));
+  const dates=days.map(d=>d.date);
+  const max=Math.max(...days.map(d=>d.count));
   $('timeline-range').textContent=dates.length+' jour(s)';
   for (const date of dates) {
     const col=element('div','chart-col');
@@ -115,7 +112,7 @@ function renderOverview() {
 function renderDevices() {
   const devices=currentDevices();
   $('device-list').replaceChildren();
-  $('list-count').textContent=devices.length+' résultat(s) · '+state.records.length+' observation(s) importée(s)';
+  $('list-count').textContent=devices.length+' résultat(s) · '+state.observations+' observation(s) importée(s)';
   if (!devices.length) $('device-list').append(element('p','empty-state',state.devices.length ? 'Aucune radio ne correspond aux filtres.' : 'Aucun relevé chargé.'));
   devices.slice(0,state.limit).forEach(d=>$('device-list').append(createRow(d)));
   $('load-more').hidden=devices.length<=state.limit;
@@ -172,32 +169,65 @@ function drawMap() {
 function refresh() {
   renderOverview();renderDevices();if(state.view==='map')drawMap();
   const has=state.files.length>0;
-  $('file-status').textContent=has ? state.files.join(', ') + ' · ' +state.records.length+' observations' : 'Aucun fichier chargé';
+  $('file-status').textContent=has ? state.files.join(', ') + ' · ' +state.observations+' observations' : 'Aucun fichier chargé';
   $('clear-data').disabled=!has;
   $('status-text').textContent=has ? state.devices.length+' radios analysées sur cet appareil' : 'En attente de relevés · aucun transfert de données';
+}
+async function processOffMain(files) {
+  if (typeof Worker !== 'function') return processFiles(files);
+  let worker;
+  try {
+    worker = new Worker(new URL('./import-worker.mjs', import.meta.url), {type:'module'});
+  } catch {
+    // Older embedded webviews without module Worker support.
+    return processFiles(files);
+  }
+  return new Promise((resolve,reject)=>{
+    const finish=()=>worker.terminate();
+    worker.addEventListener('message',event=>{
+      if(event.data?.id!==1)return;
+      finish();
+      if(event.data.ok)resolve(event.data.result);
+      else reject(new Error(event.data.error || 'Importation impossible.'));
+    });
+    worker.addEventListener('error',()=>{
+      finish();
+      reject(new Error('Le module de traitement est indisponible. Rechargez Watch et réessayez.'));
+    });
+    worker.addEventListener('messageerror',()=>{
+      finish();
+      reject(new Error('Le résultat du traitement ne peut pas être reçu.'));
+    });
+    try { worker.postMessage({id:1,files}); }
+    catch(error){ finish(); reject(error); }
+  });
 }
 async function importFiles(fileList){
   const files=Array.from(fileList).filter(f=>f && f.name);
   if(!files.length)return;
-  if(files.length>20){notify('20 fichiers maximum par import.',true);return;}
-  if(files.some(f=>f.size>40*1024*1024)){notify('Un fichier dépasse la limite de 40 Mo.',true);return;}
-  if(files.reduce((a,b)=>a+b.size,0)>80*1024*1024){notify('Import total limité à 80 Mo.',true);return;}
-  try{
-    const rows=[];const names=[];
-    let ignored=0;
-    for(const f of files){
-      const r=parseInput(f.name,await f.text());
-      rows.push(...r.records);
-      ignored+=r.ignored;
-      names.push(f.name);
-      if(rows.length>250000)throw new Error('250 000 observations maximum par session.');
-    }
-    state.records=rows;state.devices=aggregate(rows);state.files=names;state.limit=100;
+  if(state.importing){notify('Une importation est déjà en cours.',true);return;}
+  state.importing=true;
+  $('import-input').disabled=true;
+  $('clear-data').disabled=true;
+  $('status-text').textContent='Analyse des relevés en cours sur cet appareil…';
+  try {
+    const result=await processOffMain(files);
+    state.devices=result.devices;
+    state.observations=result.observations;
+    state.dailyCounts=result.dailyCounts;
+    state.files=result.files;
+    state.limit=100;
     refresh();
-    notify(rows.length+' observations importées. '+state.devices.length+' radios distinctes.'+(ignored?' '+ignored+' ligne(s) ignorée(s).':''));
+    notify(result.observations+' observations importées. '+result.devices.length+' radios distinctes.'+(result.ignored?' '+result.ignored+' ligne(s) ignorée(s).':''));
     view('overview');
-  } catch(err){notify('Import impossible : '+(err?.message||'format invalide'),true);}
-  $('import-input').value='';
+  } catch(err){
+    notify('Import impossible : '+(err?.message||'format invalide'),true);
+  } finally {
+    state.importing=false;
+    $('import-input').disabled=false;
+    $('import-input').value='';
+    refresh();
+  }
 }
 function privacyDevices(devices){
   return exportDevices(devices,state.privacy);
@@ -260,7 +290,7 @@ $('sort-filter').addEventListener('change',e=>{state.sort=e.target.value;state.l
 $('load-more').addEventListener('click',()=>{state.limit+=100;renderDevices();});
 $('export-csv').addEventListener('click',()=>exportData('csv'));
 $('export-json').addEventListener('click',()=>exportData('json'));
-$('clear-data').addEventListener('click',()=>{state.records=[];state.devices=[];state.files=[];refresh();notify('Données effacées de cette session.');});
+$('clear-data').addEventListener('click',()=>{if(state.importing)return;state.observations=0;state.dailyCounts=[];state.devices=[];state.files=[];refresh();notify('Données effacées de cette session.');});
 $('close-dialog').addEventListener('click',()=>$('device-dialog').close());
 window.addEventListener('resize',()=>{if(state.view==='map')drawMap();});
 if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
