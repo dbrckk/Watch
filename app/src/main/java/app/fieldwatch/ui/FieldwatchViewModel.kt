@@ -2280,6 +2280,39 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /** One-gesture user-approved handoff to the installed Watch web PWA. */
+    fun shareLogToWatchWeb() {
+        if (_export.value.active) return
+        viewModelScope.launch {
+            runExport("Preparing Watch web handoff · JSON lines…") {
+                val file = app.logs.exportBundle(
+                    asJsonl = true,
+                    radios = LogExportRadios.BOTH,
+                    onProgress = ::reportCopy,
+                )
+                if (file.length() == 0L) {
+                    file.delete()
+                    error("No observations to share. Enable logging and scan first.")
+                }
+                val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", file)
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "application/x-ndjson"
+                    clipData = ClipData.newRawUri("fieldwatch-log", uri)
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Fieldwatch observations for Watch web")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            }.onSuccess { intent ->
+                _export.value = ExportUi(
+                    active = false,
+                    progress = 1f,
+                    share = intent,
+                    shareTitle = "Select installed Watch web to import",
+                )
+            }
+        }
+    }
+
     fun startExport() {
         if (_export.value.active) return
         viewModelScope.launch {
