@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -94,6 +95,7 @@ fun ReportsScreen(
     var deleteSitId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteAll by remember { mutableStateOf(false) }
     var confirmWebHandoff by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     Scaffold(
         contentWindowInsets = NestedTabInsets,
         topBar = { NestedTopBar("Reports") },
@@ -594,6 +596,10 @@ fun ReportsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            FieldwatchActionButton(
+                onClick = { uriHandler.openUri("https://watch-fieldwatch.shipstatic.com") },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Open Watch web / install PWA") }
             FieldwatchActionButton(
                 onClick = { confirmWebHandoff = true },
                 enabled = !exporting && vm.logBytes() > 0,
