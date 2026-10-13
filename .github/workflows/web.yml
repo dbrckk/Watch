@@ -28,6 +28,8 @@ jobs:
         run: |
           node --check web/app.mjs
           node --check web/core.mjs
+          node --check web/import-processor.mjs
+          node --check web/import-worker.mjs
           node --check web/sw.js
       - name: Check Fieldwatch import logic
         run: node --test web/tests/*.test.mjs
@@ -35,6 +37,8 @@ jobs:
         run: |
           test -s web/index.html
           test -s web/style.css
+          test -s web/import-processor.mjs
+          test -s web/import-worker.mjs
           test -s web/manifest.webmanifest
           test -s web/icon.svg
 

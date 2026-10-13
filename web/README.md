@@ -17,13 +17,13 @@ L'interface sous /web complète le projet original [Fieldwatch](https://github.c
 3. Ouvrez la console web et importez votre fichier. L'importation précédente est remplacée par la sélection courante ; sélectionnez plusieurs fichiers ensemble pour agréger plusieurs journaux.
 4. Analysez et exportez. Les données ne quittent pas le navigateur à moins de télécharger ou partager volontairement un export.
 
-La page ne fait pas de détection Wi-Fi en direct : le navigateur n'expose pas les API Android nécessaires. Un pont natif vers la page n'est pas implémenté dans cette version. Aucune donnée radio ni GPS n'est sauvegardée en localStorage, IndexedDB ou envoyée à un serveur. Les ressources statiques seules sont mises en cache.
+La page ne fait pas de détection Wi-Fi en direct : le navigateur n'expose pas les API Android nécessaires. Un transfert à la demande depuis la nouvelle APK Android vers la PWA existe via la feuille de partage système ; il ne s'agit pas d'un scan radio en direct. Les importations manuelles sont traitées en mémoire et les relevés ne sont pas envoyés à un serveur. Lors d'un partage Android, une copie temporaire est placée dans le cache privé du navigateur jusqu'à sa consommation, avec suppression à la lecture et expiration contrôlée au prochain réveil du service worker.
 
 ## Développement et vérification
 
 La console est une application statique sans dépendance JavaScript ni service central.
-Depuis la racine : \`node --test web/tests/*.test.mjs\`.
-Pour lancer localement : \`python3 -m http.server 8000 --directory web\` puis ouvrir http://localhost:8000/ .
+Depuis la racine : `node --test web/tests/*.test.mjs`.
+Pour lancer localement : `python3 -m http.server 8000 --directory web` puis ouvrir http://localhost:8000/ .
 
 Site public déployé : https://watch-fieldwatch.shipstatic.com (hébergement statique ShipStatic, plan gratuit connecté). Le workflow .github/workflows/web.yml exécute les vérifications sans dépendre de l'activation initiale de GitHub Pages. Les modifications futures sur GitHub ne redéploient pas automatiquement ShipStatic. Le dossier web/ reste publiable sur GitHub Pages après activation manuelle du service.
 
@@ -42,7 +42,7 @@ La nouvelle APK contient, dans **Reports → Log export**, un bouton **Send obse
 
 Pour recevoir le fichier, **installez la PWA depuis Chrome Android** (menu ⋮ → Ajouter à l'écran d'accueil → Installer). Le manifeste Web Share Target déclare les formats CSV/JSONL/JSON. Un service worker intercepte localement le POST multipart : le fichier partagé n'est **jamais envoyé à un serveur**. Il transite par un cache privé éphémère et est supprimé dès la consommation. Un élément inutilisé de plus de 10 minutes sera supprimé à l'activation suivante du service worker (la suppression n'est pas garantie à l'instant exact des 10 minutes).
 
-**Compatibilité** : certains Chrome Android 153/154 (régression septembre 2026) livrent un formulaire de partage vide pour les WebAPK. Un message explicite demande alors d'utiliser le bouton Importer du site comme solution de repli. Un navigateur sans support Web Share Target ne pourra pas recevoir directement les partages Android.
+**Compatibilité** : une régression de Chrome Android 153 a fait disparaître les fichiers du partage WebAPK. Chromium a déclaré le correctif vérifié notamment dans Chrome 154.0.8037.57 et 155.0.8059.16 (voir [incident Chromium 561685220](https://issuetracker.google.com/issues/561685220)). Sur un navigateur non corrigé, le bouton **Importer** du site reste disponible. Un navigateur sans support Web Share Target ne pourra pas recevoir directement les partages Android.
 
 **Ce pont est à la demande, en un geste**, et non un flux Wi-Fi/BLE live. L'APK d'origine de Fieldwatch dans `dist/` ne contient pas ce bouton ; il faut installer un build APK généré à partir de ce dépôt. Le partage depuis la nouvelle application n'est pas testé sur appareil réel à ce stade.
 
