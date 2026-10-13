@@ -12,7 +12,7 @@ cat > "$tmp/buildtools/apksigner" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 path="${@: -1}"
-if [[ "$path" == *previous* ]]; then digest="${OLD_DIGEST:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
+if [[ "$path" != "$MOCK_NEW_APK" ]]; then digest="${OLD_DIGEST:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
 else digest="${NEW_DIGEST:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"; fi
 [[ "${MOCK_INVALID_SIGNATURE:-0}" != 1 ]] || exit 2
 echo "Signer #1 certificate SHA-256 digest: $digest"
@@ -21,7 +21,7 @@ cat > "$tmp/buildtools/aapt" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 path="${@: -1}"
-if [[ "$path" == *previous* ]]; then
+if [[ "$path" != "$MOCK_NEW_APK" ]]; then
   code="${OLD_CODE:-36}"; version="1.1.26-watch.1"
 else
   code="${NEW_CODE:-37}"; version="${NEW_VERSION:-1.1.26-watch.2}"
@@ -51,7 +51,7 @@ else
 fi
 MOCK
 chmod +x "$tmp/buildtools/apksigner" "$tmp/buildtools/aapt" "$tmp/bin/gh"
-export PATH="$tmp/bin:$PATH" MOCK_PREVIOUS_APK="$tmp/previous.apk"
+export PATH="$tmp/bin:$PATH" MOCK_PREVIOUS_APK="$tmp/previous.apk" MOCK_NEW_APK="$tmp/new.apk"
 run() { bash "$gate" "$tmp/new.apk" "v1.1.26-watch.2" "$tmp/buildtools"; }
 ok() {
   local description="$1"
