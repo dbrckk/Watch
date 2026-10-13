@@ -56,6 +56,34 @@ class LogFileRingTest {
     }
 
     @Test
+    fun chronologicalReplayKeepsLatestSignalAfterCircularWrap() = withDir { dir, t ->
+        val header = "timestamp,iso,kind,mac,name,rssi,channel,freq,oui,vendor,fleets,mfg,uuids,flags,raw,lat,lon,vendor_ie\\n"
+        val old = part(dir, 11, "csv", t).apply {
+            writeText(header + "1000,iso,BLE,AA:BB:CC:DD:EE:01,Previous,-83,0,0,,,,,,,,,,\\n")
+            assertTrue(setLastModified(t))
+        }
+        val fresh = part(dir, 0, "csv", t + 1000L).apply {
+            writeText(header + "2000,iso,BLE,AA:BB:CC:DD:EE:01,Latest,-51,0,0,,,,,,,,,,\\n")
+            assertTrue(setLastModified(t + 1000L))
+        }
+        assertEquals(listOf(old, fresh), LogFileRing.orderedParts(dir))
+        val acc = linkedMapOf<String, app.fieldwatch.domain.LogRadio>()
+        LogFileRing.orderedParts(dir).forEach { file ->
+            app.fieldwatch.domain.LogReplay.ingest(
+                file.readLines().asSequence(),
+                json = false,
+                acc = acc,
+            )
+        }
+        val radio = acc.values.single()
+        assertEquals("Latest", radio.name)
+        assertEquals(-51, radio.rssi)
+        assertEquals(1000L, radio.firstSeen)
+        assertEquals(2000L, radio.lastSeen)
+        assertEquals(2, radio.hits)
+    }
+
+    @Test
     fun noFilesUsesFreshIndexAndAnEmptyHistory() = withDir { dir, _ ->
         assertEquals(emptyList<File>(), LogFileRing.orderedParts(dir))
         assertEquals(0, LogFileRing.newestJsonlIndex(dir))
