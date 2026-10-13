@@ -72,8 +72,12 @@ try{
     await page.locator('#metric-total').waitFor();
     assert.equal(await page.locator('#metric-total').textContent(),'—');
     assert.ok(await page.locator('#privacy-toggle').isChecked());
-    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+3),
-      'mobile page overflows horizontally');
+    const viewport=await page.evaluate(()=>({
+      layout:innerWidth,visible:visualViewport?.width||innerWidth,
+      document:document.documentElement.scrollWidth
+    }));
+    assert.ok(viewport.layout<=viewport.visible+3 && viewport.document<=viewport.visible+3,
+      'mobile layout exceeds physical screen: '+JSON.stringify(viewport));
   });
   await step('Import real JSONL via file picker and background Worker',async()=>{
     await page.locator('#import-input').setInputFiles(filePayload);

@@ -32,3 +32,13 @@ dialog:modal #close-dialog {
 /* Let hit-testing reach the close button through the sticky modal header. */
 dialog:modal .dialog-top { pointer-events:none; }
 dialog:modal #close-dialog { pointer-events:auto; }
+
+/* On narrow devices, a CSS grid's min-content sizing can grow the layout
+   viewport wider than the physical screen. Use block layout for the shell,
+   allowing only the tab strip itself to scroll horizontally. */
+@media (max-width:1000px) {
+  .app-shell { display:block; width:100%; min-width:0; }
+  .sidebar, .workspace { display:block; min-width:0; width:100%; max-width:100%; }
+  .navigation { display:flex; min-width:0; max-width:100%; overflow-x:auto; }
+  .overview-grid { grid-template-columns:minmax(0,1fr); }
+}
