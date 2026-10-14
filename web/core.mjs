@@ -79,7 +79,8 @@ export function normalize(row) {
   const ts = dateMs(row.ts ?? row.timestamp ?? row.last_seen ?? row.lastSeen ?? row.lastseen ?? row.iso) ?? first;
   const started = first ?? ts;
   const rssi = number(row.rssi);
-  const hits = number(row.hits ?? row.hitCount) ?? 1;
+  const rawHits = number(row.hits ?? row.hitCount);
+  const hits = rawHits !== null && Number.isSafeInteger(rawHits) && rawHits >= 1 ? rawHits : 1;
   return {
     kind, mac, name: clean(row.name ?? row.ssid ?? ''), vendor: clean(row.vendor ?? ''),
     rssi: rssi === null ? null : Math.round(rssi),
@@ -87,8 +88,9 @@ export function normalize(row) {
     channel: number(row.channel), freq: number(row.freq ?? row.frequency_mhz),
     flags: clean(row.flags ?? ''), fleets: clean(row.fleets ?? row.signatures ?? ''),
     position,
-    hidden: row.hidden === true || row.hidden === 'true',
-    randomized: row.rand === true || row.randomized === true || row.rand === 'true',
+    hidden: row.hidden === true || String(row.hidden).toLowerCase() === 'true',
+    randomized: row.rand === true || row.randomized === true ||
+      String(row.rand ?? row.randomized).toLowerCase() === 'true',
   };
 }
 
@@ -180,12 +182,12 @@ function csvCell(value) {
 }
 
 export function toCsv(devices, includeCoords = true) {
-  const cols = ['kind','mac','name','vendor','rssi','firstSeen','lastSeen','hits','channel','freq','lat','lon','fleets'];
+  const cols = ['kind','mac','name','vendor','rssi','firstSeen','lastSeen','hits','channel','freq','lat','lon','fleets','hidden','randomized'];
   const rows = [cols.join(',')];
   for (const d of devices) {
     const vals = [d.kind,d.mac,d.name,d.vendor,d.rssi,d.firstSeen ? new Date(d.firstSeen).toISOString() : '',
       d.lastSeen ? new Date(d.lastSeen).toISOString() : '',d.hits,d.channel,d.freq,
-      includeCoords ? d.position?.lat : '',includeCoords ? d.position?.lon : '',d.fleets];
+      includeCoords ? d.position?.lat : '',includeCoords ? d.position?.lon : '',d.fleets,d.hidden,d.randomized];
     rows.push(vals.map(csvCell).join(','));
   }
   return rows.join('\r\n') + '\r\n';
