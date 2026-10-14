@@ -213,3 +213,28 @@ test('untrusted hit counts never become NaN, negative or fractional', () => {
   }
   assert.equal(parseInput('radio.json',JSON.stringify([{kind:'BLE',mac:'AA',hits:9}])).records[0].hits,9);
 });
+
+
+test('Android LogStore CSV RAND/HIDDEN flags survive import and Watch CSV re-export', () => {
+  // Matches LogStore.CSV_HEADER and its "RAND HIDDEN" flags encoding.
+  const header = 'timestamp,iso,kind,mac,name,rssi,channel,freq,oui,vendor,fleets,mfg,uuids,flags,raw,lat,lon,vendor_ie';
+  const row = (mac, flags) => [
+    1760200200000, '2026-10-11T18:30:00.000Z', 'WIFI', mac, 'Radio', -53,
+    6, 2437, '', '', '', '', '', flags, '', 46.78, 4.85, ''
+  ].join(',');
+  const csv = [header,
+    row('AA:BB:CC:00:00:01', 'RAND HIDDEN'),
+    row('AA:BB:CC:00:00:02', 'RAND'),
+    row('AA:BB:CC:00:00:03', 'NOTHIDDEN GRAND'),
+  ].join('\n');
+  const imported = aggregate(parseInput('fieldwatch-log.csv', csv).records);
+  assert.deepEqual(imported.map(d => [d.hidden, d.randomized]), [
+    [true, true], [false, true], [false, false]
+  ]);
+  const exported = toCsv(exportDevices(imported, false));
+  const restored = aggregate(parseInput('watch.csv', exported).records);
+  assert.deepEqual(restored.map(d => [d.hidden, d.randomized]),
+    imported.map(d => [d.hidden, d.randomized]));
+  assert.deepEqual(restored[0].position, {lat:46.78, lon:4.85});
+  assert.equal(restored[0].lastSeen, 1760200200000);
+});
