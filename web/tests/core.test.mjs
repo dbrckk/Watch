@@ -193,3 +193,23 @@ test('signal sorting uses each radio latest RSSI, not its historical peak', () =
   assert.deepEqual(ranked.map(d=>d.mac),['BB','AA']);
   assert.deepEqual(ranked.map(d=>d.rssi),[-49,-90]);
 });
+
+test('CSV roundtrip preserves hidden and randomized radio flags', () => {
+  const original=aggregate(parseInput('radios.json',JSON.stringify([
+    {kind:'WIFI',mac:'AA:BB',name:'Hidden',ts:1760200200000,hidden:true,randomized:true},
+    {kind:'BLE',mac:'CC:DD',ts:1760200200000,hidden:false,randomized:false}
+  ])).records);
+  const exported=toCsv(original);
+  const reimported=aggregate(parseInput('watch.csv',exported).records);
+  assert.equal(reimported[0].hidden,true);
+  assert.equal(reimported[0].randomized,true);
+  assert.equal(reimported[1].hidden,false);
+  assert.equal(reimported[1].randomized,false);
+});
+test('untrusted hit counts never become NaN, negative or fractional', () => {
+  for (const hits of [-1,0,1.5,'NaN','Infinity',1e30]) {
+    const d=parseInput('radio.json',JSON.stringify([{kind:'BLE',mac:'AA',hits}])).records[0];
+    assert.equal(d.hits,1);
+  }
+  assert.equal(parseInput('radio.json',JSON.stringify([{kind:'BLE',mac:'AA',hits:9}])).records[0].hits,9);
+});
