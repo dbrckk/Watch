@@ -193,3 +193,48 @@ test('signal sorting uses each radio latest RSSI, not its historical peak', () =
   assert.deepEqual(ranked.map(d=>d.mac),['BB','AA']);
   assert.deepEqual(ranked.map(d=>d.rssi),[-49,-90]);
 });
+
+test('CSV roundtrip preserves hidden and randomized radio flags', () => {
+  const original=aggregate(parseInput('radios.json',JSON.stringify([
+    {kind:'WIFI',mac:'AA:BB',name:'Hidden',ts:1760200200000,hidden:true,randomized:true},
+    {kind:'BLE',mac:'CC:DD',ts:1760200200000,hidden:false,randomized:false}
+  ])).records);
+  const exported=toCsv(original);
+  const reimported=aggregate(parseInput('watch.csv',exported).records);
+  assert.equal(reimported[0].hidden,true);
+  assert.equal(reimported[0].randomized,true);
+  assert.equal(reimported[1].hidden,false);
+  assert.equal(reimported[1].randomized,false);
+});
+test('untrusted hit counts never become NaN, negative or fractional', () => {
+  for (const hits of [-1,0,1.5,'NaN','Infinity',1e30]) {
+    const d=parseInput('radio.json',JSON.stringify([{kind:'BLE',mac:'AA',hits}])).records[0];
+    assert.equal(d.hits,1);
+  }
+  assert.equal(parseInput('radio.json',JSON.stringify([{kind:'BLE',mac:'AA',hits:9}])).records[0].hits,9);
+});
+
+
+test('Android LogStore CSV RAND/HIDDEN flags survive import and Watch CSV re-export', () => {
+  // Matches LogStore.CSV_HEADER and its "RAND HIDDEN" flags encoding.
+  const header = 'timestamp,iso,kind,mac,name,rssi,channel,freq,oui,vendor,fleets,mfg,uuids,flags,raw,lat,lon,vendor_ie';
+  const row = (mac, flags) => [
+    1760200200000, '2026-10-11T18:30:00.000Z', 'WIFI', mac, 'Radio', -53,
+    6, 2437, '', '', '', '', '', flags, '', 46.78, 4.85, ''
+  ].join(',');
+  const csv = [header,
+    row('AA:BB:CC:00:00:01', 'RAND HIDDEN'),
+    row('AA:BB:CC:00:00:02', 'RAND'),
+    row('AA:BB:CC:00:00:03', 'NOTHIDDEN GRAND'),
+  ].join('\n');
+  const imported = aggregate(parseInput('fieldwatch-log.csv', csv).records);
+  assert.deepEqual(imported.map(d => [d.hidden, d.randomized]), [
+    [true, true], [false, true], [false, false]
+  ]);
+  const exported = toCsv(exportDevices(imported, false));
+  const restored = aggregate(parseInput('watch.csv', exported).records);
+  assert.deepEqual(restored.map(d => [d.hidden, d.randomized]),
+    imported.map(d => [d.hidden, d.randomized]));
+  assert.deepEqual(restored[0].position, {lat:46.78, lon:4.85});
+  assert.equal(restored[0].lastSeen, 1760200200000);
+});
