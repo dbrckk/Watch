@@ -81,16 +81,20 @@ export function normalize(row) {
   const rssi = number(row.rssi);
   const rawHits = number(row.hits ?? row.hitCount);
   const hits = rawHits !== null && Number.isSafeInteger(rawHits) && rawHits >= 1 ? rawHits : 1;
+  // Android LogStore CSV encodes both radio privacy flags in its `flags` column
+  // (e.g. "RAND HIDDEN"); JSONL and Watch CSV use explicit booleans instead.
+  const flags = clean(row.flags ?? '');
+  const tokens = new Set(flags.toUpperCase().split(/[\s,;|]+/).filter(Boolean));
   return {
     kind, mac, name: clean(row.name ?? row.ssid ?? ''), vendor: clean(row.vendor ?? ''),
     rssi: rssi === null ? null : Math.round(rssi),
     firstSeen: started, lastSeen: ts, hits: Math.max(1, Math.floor(hits)),
     channel: number(row.channel), freq: number(row.freq ?? row.frequency_mhz),
-    flags: clean(row.flags ?? ''), fleets: clean(row.fleets ?? row.signatures ?? ''),
+    flags, fleets: clean(row.fleets ?? row.signatures ?? ''),
     position,
-    hidden: row.hidden === true || String(row.hidden).toLowerCase() === 'true',
+    hidden: row.hidden === true || String(row.hidden).toLowerCase() === 'true' || tokens.has('HIDDEN'),
     randomized: row.rand === true || row.randomized === true ||
-      String(row.rand ?? row.randomized).toLowerCase() === 'true',
+      String(row.rand ?? row.randomized).toLowerCase() === 'true' || tokens.has('RAND'),
   };
 }
 
