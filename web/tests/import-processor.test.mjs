@@ -78,10 +78,10 @@ test('WiGLE GeoExport rows contribute to the daily timeline', async () => {
 test('incremental multi-file aggregation preserves latest radio facts and daily counts', async () => {
   const input = [
     file('new.jsonl', JSON.stringify({kind:'WIFI',mac:'AA:BB',ts:1760286600000,
-      name:'New',rssi:-82,lat:46,lon:4})+'\\n'),
+      name:'New',rssi:-82,lat:46,lon:4})+'\n'),
     file('old.jsonl', JSON.stringify({kind:'WIFI',mac:'AA:BB',ts:1760200200000,
-      name:'Old',rssi:-32,lat:45,lon:3})+'\\n'),
-    file('ble.jsonl', JSON.stringify({kind:'BLE',mac:'CC:DD',ts:1760286600000,rssi:-60})+'\\n')
+      name:'Old',rssi:-32,lat:45,lon:3})+'\n'),
+    file('ble.jsonl', JSON.stringify({kind:'BLE',mac:'CC:DD',ts:1760286600000,rssi:-60})+'\n')
   ];
   const result = await processFiles(input);
   assert.equal(result.observations,3);
