@@ -74,3 +74,32 @@ test('WiGLE GeoExport rows contribute to the daily timeline', async () => {
     {date:'2026-10-12',count:1},
   ]);
 });
+
+test('incremental multi-file aggregation preserves latest radio facts and daily counts', async () => {
+  const input = [
+    file('new.jsonl', JSON.stringify({kind:'WIFI',mac:'AA:BB',ts:1760286600000,
+      name:'New',rssi:-82,lat:46,lon:4})+'\n'),
+    file('old.jsonl', JSON.stringify({kind:'WIFI',mac:'AA:BB',ts:1760200200000,
+      name:'Old',rssi:-32,lat:45,lon:3})+'\n'),
+    file('ble.jsonl', JSON.stringify({kind:'BLE',mac:'CC:DD',ts:1760286600000,rssi:-60})+'\n')
+  ];
+  const result = await processFiles(input);
+  assert.equal(result.observations,3);
+  assert.equal(result.devices.length,2);
+  const wifi = result.devices.find(d=>d.kind==='WIFI');
+  assert.equal(wifi.hits,2);
+  assert.equal(wifi.firstSeen,1760200200000);
+  assert.equal(wifi.lastSeen,1760286600000);
+  assert.equal(wifi.name,'New');
+  assert.equal(wifi.rssi,-82);
+  assert.deepEqual(wifi.position,{lat:46,lon:4});
+  assert.deepEqual(result.dailyCounts.map(d=>d.count),[1,2]);
+});
+
+test('numeric hit overflow rejects entire cross-file import instead of returning bad counts', async () => {
+  const input = [
+    file('first.json',JSON.stringify([{kind:'BLE',mac:'AA:BB',hits:Number.MAX_SAFE_INTEGER}])),
+    file('second.json',JSON.stringify([{kind:'BLE',mac:'AA:BB',hits:1}]))
+  ];
+  await assert.rejects(processFiles(input),/Trop d’occurrences/);
+});
