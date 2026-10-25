@@ -1,4 +1,4 @@
-import {aggregate, parseInput} from './core.mjs';
+import {createRadioAccumulator, parseInput} from './core.mjs';
 
 export const FILE_LIMIT = 20;
 export const FILE_BYTES_LIMIT = 40 * 1024 * 1024;
@@ -8,6 +8,8 @@ export const OBSERVATION_LIMIT = 250000;
 /**
  * Complete an import as one transaction. The caller swaps the session state
  * only after every selected file has been parsed and validated.
+ * Aggregate each file immediately, so memory grows with distinct radios
+ * rather than retaining every observation across all selected files.
  * Return aggregated radios and daily counts, not the raw 250k-item log.
  */
 export async function processFiles(files) {
@@ -21,17 +23,18 @@ export async function processFiles(files) {
     throw new Error("L'import total est limité à 80 Mo.");
   }
 
-  const records = [], daily = new Map(), names = [];
-  let ignored = 0;
+  const radios = createRadioAccumulator(), daily = new Map(), names = [];
+  let ignored = 0, observations = 0;
   for (const file of selected) {
     const {records: parsed, ignored: skipped} = parseInput(file.name, await file.text());
-    if (records.length + parsed.length > OBSERVATION_LIMIT) {
+    if (observations + parsed.length > OBSERVATION_LIMIT) {
       throw new Error('250 000 observations maximum par session.');
     }
     ignored += skipped;
+    observations += parsed.length;
     names.push(file.name);
     for (const record of parsed) {
-      records.push(record);
+      radios.add(record);
       const at = record.lastSeen;
       if (at && Number.isFinite(at) && Math.abs(at) <= 8640000000000000) {
         const day = new Date(at).toISOString().slice(0, 10);
@@ -40,8 +43,8 @@ export async function processFiles(files) {
     }
   }
   return {
-    devices: aggregate(records),
-    observations: records.length,
+    devices: radios.values(),
+    observations,
     ignored,
     files: names,
     dailyCounts: [...daily].sort(([a], [b]) => a.localeCompare(b))
