@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseCsv,parseInput,aggregate,selectDevices,toCsv,summary,exportDevices,geographicBounds} from '../core.mjs';
+import {parseCsv,parseInput,aggregate,createRadioAccumulator,selectDevices,toCsv,summary,exportDevices,geographicBounds} from '../core.mjs';
 
 test('ingère le vrai format JSONL Fieldwatch', () => {
   const x = parseInput('log.jsonl', '{"ts":1760200200000,"iso":"2026-10-11T18:30:00Z","kind":"WIFI","mac":"AA:BB:CC:DD:EE:FF","name":"AP","rssi":-65,"lat":46.78,"lon":4.85}\n');
@@ -237,4 +237,36 @@ test('Android LogStore CSV RAND/HIDDEN flags survive import and Watch CSV re-exp
     imported.map(d => [d.hidden, d.randomized]));
   assert.deepEqual(restored[0].position, {lat:46.78, lon:4.85});
   assert.equal(restored[0].lastSeen, 1760200200000);
+});
+
+test('streamed radio accumulation matches batch aggregation with out-of-order observations', () => {
+  const input = parseInput('history.json', JSON.stringify([
+    {kind:'WIFI',mac:'AA:BB',ts:1760200300000,rssi:-81,name:'New',lat:46,lon:4},
+    {kind:'BLE',mac:'CC:DD',ts:1760200400000,rssi:-70},
+    {kind:'WIFI',mac:'AA:BB',ts:1760200100000,rssi:-20,name:'Old',lat:45,lon:3},
+    {kind:'WIFI',mac:'AA:BB',ts:1760200200000,rssi:-41,name:'Middle'}
+  ])).records;
+  const accumulator = createRadioAccumulator();
+  for (const r of input) accumulator.add(r);
+  assert.deepEqual(accumulator.values(), aggregate(input));
+  const wifi = accumulator.values().find(d => d.kind === 'WIFI');
+  assert.equal(wifi.hits, 3);
+  assert.equal(wifi.rssi, -81);
+  assert.equal(wifi.name, 'New');
+  assert.equal(wifi.firstSeen, 1760200100000);
+  assert.deepEqual(wifi.position, {lat:46,lon:4});
+});
+
+test('overflowing accumulated hits is rejected without silently losing precision', () => {
+  const max = Number.MAX_SAFE_INTEGER;
+  const records = parseInput('hits.json', JSON.stringify([
+    {kind:'BLE',mac:'AA:BB',hits:max},
+    {kind:'BLE',mac:'AA:BB',hits:1}
+  ])).records;
+  assert.equal(aggregate(records.slice(0,1))[0].hits,max);
+  assert.throws(() => aggregate(records), /Trop d’occurrences/);
+  const accumulator = createRadioAccumulator();
+  accumulator.add(records[0]);
+  assert.throws(() => accumulator.add(records[1]), /Trop d’occurrences/);
+  assert.equal(accumulator.values()[0].hits,max,'failed increment must not corrupt the retained value');
 });
