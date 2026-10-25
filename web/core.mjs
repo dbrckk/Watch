@@ -126,12 +126,19 @@ export function parseInput(filename, text) {
   return {records, ignored: rejected.length};
 }
 
-export function aggregate(records) {
+export function createRadioAccumulator() {
   const byId = new Map();
-  for (const r of records) {
+  function add(r) {
+    // Never allow user-controlled hit totals to become imprecise numbers.
+    if (!Number.isSafeInteger(r.hits) || r.hits < 1) {
+      throw new Error('Nombre d’occurrences radio invalide.');
+    }
     const key = r.kind + ':' + r.mac;
     const prev = byId.get(key);
-    if (!prev) { byId.set(key, {...r, key}); continue; }
+    if (!prev) { byId.set(key, {...r, key}); return; }
+    if (prev.hits > Number.MAX_SAFE_INTEGER - r.hits) {
+      throw new Error('Trop d’occurrences pour un compteur fiable.');
+    }
     prev.hits += r.hits;
     if (r.firstSeen !== null && (prev.firstSeen === null || r.firstSeen < prev.firstSeen))
       prev.firstSeen = r.firstSeen;
@@ -162,7 +169,13 @@ export function aggregate(records) {
       if (prev.rssi === null && r.rssi !== null) prev.rssi = r.rssi;
     }
   }
-  return [...byId.values()];
+  return {add, values: () => [...byId.values()]};
+}
+
+export function aggregate(records) {
+  const accumulator = createRadioAccumulator();
+  for (const record of records) accumulator.add(record);
+  return accumulator.values();
 }
 
 export function selectDevices(devices, query = '', kind = 'ALL', sort = 'recent') {
