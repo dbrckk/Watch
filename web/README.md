@@ -7,7 +7,7 @@ L'interface sous /web complète le projet original [Fieldwatch](https://github.c
 - inventaire et dédoublonnage des radios par type et identifiant
 - recherche, tri, filtres, statistiques, chronologie et positions relatives (hors ligne, sans tuiles réseau)
 - export des observations filtrées en CSV et JSON
-- protection de confidentialité activée par défaut : MAC et GPS masqués pour l'affichage et les exports dérivés
+- protection de confidentialité activée par défaut : identifiants MAC entièrement masqués dans les listes, les détails et les intitulés accessibles, y compris lorsqu'ils sont intégrés aux métadonnées ; coordonnées GPS masquées et exports dérivés anonymisés
 - interface responsive, PWA utilisable hors ligne après une première ouverture
 
 ## Fonctionnement

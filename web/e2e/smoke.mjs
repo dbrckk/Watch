@@ -97,6 +97,47 @@ try{
     assert.match(await page.locator('#file-status').textContent(),/3 observations/);
     assert.equal(await page.locator('#timeline .chart-col').count(),1);
   });
+  await step('Private UI and exports redact radio IDs embedded in metadata, including live toggle',async()=>{
+    const mac='11:22:33:44:55:66', dashed='11-22-33-44-55-66';
+    const name='Tracker '+mac;
+    const fixture=JSON.stringify([{kind:'BLE',mac,name,
+      vendor:'Manufacturer '+dashed,fleets:'Signals 112233445566 and 00:11:22:33:44:55',
+      ts:1760200200000}]);
+    await page.locator('#import-input').setInputFiles({
+      name:'embedded-mac.json',mimeType:'application/json',buffer:Buffer.from(fixture),
+    });
+    await expectText('#metric-total','1');
+    const recent=await page.locator('#recent-list').textContent();
+    assert.ok(!recent.includes(mac),'recent row leaked primary MAC');
+    assert.ok(!recent.includes(dashed),'recent row leaked alternate MAC');
+    const aria=await page.locator('#recent-list .radio-row').getAttribute('aria-label');
+    assert.ok(!aria.includes(mac),'accessibility label leaked primary MAC');
+    await page.locator('#recent-list .radio-row').click();
+    let text=(await page.locator('#device-dialog').textContent());
+    for(const leaked of [mac,dashed,'112233445566','00:11:22:33:44:55'])
+      assert.ok(!text.includes(leaked),'dialog leaked '+leaked);
+    // The dialog is modal: a real user must close it before using the toggle.
+    await page.locator('#close-dialog').click();
+    await page.locator('#privacy-toggle').uncheck();
+    await page.locator('#recent-list .radio-row').click();
+    assert.match(await page.locator('#dialog-title').textContent(),/11:22:33:44:55:66/);
+    assert.match(await page.locator('#dialog-details').textContent(),/11-22-33-44-55-66/);
+    await page.locator('#close-dialog').click();
+    await page.locator('#privacy-toggle').check();
+    await page.locator('#recent-list .radio-row').click();
+    assert.ok(!(await page.locator('#device-dialog').textContent()).includes(mac),
+      'dialog did not re-mask when toggled back to private');
+    await page.locator('#close-dialog').click();
+    await page.locator('[data-view="devices"]').click();
+    const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#export-json').click()]);
+    const chunks=[];
+    for await(const c of await download.createReadStream())chunks.push(c);
+    const output=Buffer.concat(chunks).toString('utf8');
+    for(const leaked of [mac,dashed,'112233445566','00:11:22:33:44:55'])
+      assert.ok(!output.includes(leaked),'private JSON export leaked '+leaked);
+    await page.locator('#import-input').setInputFiles(filePayload);
+    await expectText('#metric-total','2');
+  });
   await step('Search/filter and radio details conceal MAC by default',async()=>{
     await page.locator('[data-view="devices"]').click();
     await expectText('#list-count','2 résultat(s) · 3 observation(s) importée(s)');

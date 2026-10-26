@@ -220,6 +220,35 @@ export function summary(devices, observations) {
 }
 
 /**
+ * Mask literal radio IDs and common 48-bit MAC spellings embedded in names,
+ * vendor data or signature metadata. Never mutate the underlying observations:
+ * turning off privacy must still show the original values.
+ */
+export function redactRadioText(value, mac, replacement = 'Identifiant masqué') {
+  if (typeof value !== 'string') return value;
+  const needle = String(mac ?? '');
+  const upper = value.toUpperCase();
+  const search = needle.toUpperCase();
+  let result = '';
+  let cursor = 0;
+  if (search) {
+    while (true) {
+      const at = upper.indexOf(search, cursor);
+      if (at < 0) break;
+      result += value.slice(cursor, at) + replacement;
+      cursor = at + search.length;
+    }
+  }
+  result += value.slice(cursor);
+  // Covers AA:BB:CC:DD:EE:FF, AA-BB-CC-DD-EE-FF and AABBCCDDEEFF,
+  // including addresses other than the primary MAC found in metadata.
+  return result.replace(
+    /(?:[a-f0-9]{2}[:-]){5}[a-f0-9]{2}|\b[a-f0-9]{12}\b/gi,
+    replacement
+  );
+}
+
+/**
  * A private export uses an opaque unique ID, not a partially masked MAC.
  * Partial masking collides when the file is reimported and can reveal OUI
  * prefixes. Pass a fresh random namespace for each downloaded export.
@@ -229,18 +258,7 @@ export function exportDevices(devices, privacy = true, namespace = '') {
   return devices.map(({key,mac,position,...fields}, index) => {
     if (!privacy) return {...fields, mac, position:position ?? null};
     const alias = 'WATCH-' + prefix + '-' + String(index + 1).padStart(6,'0');
-    const redact = value => {
-      if (typeof value !== 'string' || !mac) return value;
-      // Case-insensitive literal substring replacement. No untrusted regex.
-      const haystack=value.toUpperCase(), needle=mac.toUpperCase();
-      let cursor=0, rewritten='';
-      while (true) {
-        const at=haystack.indexOf(needle,cursor);
-        if (at<0) return rewritten+value.slice(cursor);
-        rewritten+=value.slice(cursor,at)+alias;
-        cursor=at+mac.length;
-      }
-    };
+    const redact = value => redactRadioText(value, mac, alias);
     const safe=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,redact(v)]));
     return {...safe,mac:alias,position:null};
   });

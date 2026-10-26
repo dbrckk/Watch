@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseCsv,parseInput,aggregate,createRadioAccumulator,selectDevices,toCsv,summary,exportDevices,geographicBounds} from '../core.mjs';
+import {parseCsv,parseInput,aggregate,createRadioAccumulator,redactRadioText,selectDevices,toCsv,summary,exportDevices,geographicBounds} from '../core.mjs';
 
 test('ingère le vrai format JSONL Fieldwatch', () => {
   const x = parseInput('log.jsonl', '{"ts":1760200200000,"iso":"2026-10-11T18:30:00Z","kind":"WIFI","mac":"AA:BB:CC:DD:EE:FF","name":"AP","rssi":-65,"lat":46.78,"lon":4.85}\n');
@@ -269,4 +269,33 @@ test('overflowing accumulated hits is rejected without silently losing precision
   accumulator.add(records[0]);
   assert.throws(() => accumulator.add(records[1]), /Trop d’occurrences/);
   assert.equal(accumulator.values()[0].hits,max,'failed increment must not corrupt the retained value');
+});
+
+test('privacy text masks literal, dashed and compact MAC values without mutating input', () => {
+  const mac='AA:BB:CC:11:22:33';
+  const source='Connected '+mac+' / AA-BB-CC-11-22-33 / AABBCC112233 / 00:11:22:33:44:55';
+  const result=redactRadioText(source,mac);
+  assert.ok(!result.includes(mac));
+  assert.ok(!result.includes('AA-BB-CC-11-22-33'));
+  assert.ok(!result.includes('AABBCC112233'));
+  assert.ok(!result.includes('00:11:22:33:44:55'));
+  assert.equal(source.includes(mac),true,'original radio metadata must stay intact');
+  assert.equal(redactRadioText(42,mac),42);
+});
+
+test('private export removes embedded alternative MAC forms from metadata', () => {
+  const mac='AA:BB:CC:11:22:33';
+  const radios=aggregate(parseInput('radio.json',JSON.stringify([{
+    kind:'WIFI',mac,name:'Device '+mac,
+    vendor:'Vendor AA-BB-CC-11-22-33',
+    fleets:'Nearby 00:11:22:33:44:55 and AABBCC112233'
+  }])).records);
+  const output=exportDevices(radios,true,'fixed-test-ns');
+  assert.equal(output[0].mac,'WATCH-fixed-test-ns-000001');
+  const serialized=JSON.stringify(output);
+  assert.ok(!serialized.includes(mac));
+  assert.ok(!serialized.includes('AA-BB-CC-11-22-33'));
+  assert.ok(!serialized.includes('AABBCC112233'));
+  assert.ok(!serialized.includes('00:11:22:33:44:55'));
+  assert.equal(radios[0].name,'Device '+mac,'source radio metadata must not be mutated');
 });
