@@ -1,9 +1,10 @@
-import {selectDevices,toCsv,summary,exportDevices,geographicBounds} from './core.mjs';
+import {selectDevices,toCsv,summary,exportDevices,geographicBounds,redactRadioText} from './core.mjs';
 import {processFiles} from './import-processor.mjs';
 
 const $ = id => document.getElementById(id);
 const state = {observations:0,dailyCounts:[],devices:[],files:[],importing:false,privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview'};
 const titles = {overview:"Vue d'ensemble",devices:"Observations",map:"Positions",guide:"Guide & sécurité"};
+let selectedRadio = null;
 
 function element(tag, cls, text) {
   const n = document.createElement(tag);
@@ -16,8 +17,10 @@ function prettyDate(ms) {
     new Intl.DateTimeFormat('fr-FR',{dateStyle:'short',timeStyle:'short'}).format(new Date(ms)) : 'Non renseignée';
 }
 function shortId(mac) {
-  if (!state.privacy) return mac;
-  return mac.length < 6 ? '••••' : mac.slice(0,5) + '••:••';
+  return state.privacy ? 'Identifiant masqué' : mac;
+}
+function privateText(text, mac) {
+  return state.privacy ? redactRadioText(text, mac) : text;
 }
 function notify(message, error = false) {
   const el = $('toast');
@@ -36,23 +39,24 @@ function createRow(d) {
   row.type = 'button';
   row.append(badgeFor(d));
   const info = element('div','radio-info');
-  info.append(element('strong','',d.name || (d.hidden ? 'Réseau masqué' : 'Radio sans nom')));
-  info.append(element('small','',shortId(d.mac) + (d.vendor ? ' · ' + d.vendor : '')));
+  info.append(element('strong','',privateText(d.name, d.mac) || (d.hidden ? 'Réseau masqué' : 'Radio sans nom')));
+  info.append(element('small','',shortId(d.mac) + (d.vendor ? ' · ' + privateText(d.vendor, d.mac) : '')));
   row.append(info);
   const extra = element('div','radio-extra');
   extra.append(element('strong','',d.rssi === null ? '—' : d.rssi + ' dBm'));
   extra.append(element('small','',prettyDate(d.lastSeen)));
   row.append(extra);
-  row.setAttribute('aria-label','Détails : ' + (d.name || d.kind) + ', ' + shortId(d.mac));
+  row.setAttribute('aria-label','Détails : ' + (privateText(d.name, d.mac) || d.kind) + ', ' + shortId(d.mac));
   row.addEventListener('click', () => openRadio(d));
   return row;
 }
 function openRadio(d) {
-  $('dialog-title').textContent = d.name || 'Radio ' + d.kind;
+  selectedRadio = d;
+  $('dialog-title').textContent = privateText(d.name, d.mac) || 'Radio ' + d.kind;
   const grid = element('div','details-grid');
   const fields = [
     ['Type',d.kind === 'BLE' ? 'Bluetooth LE' : 'Wi-Fi'],
-    ['Identifiant',shortId(d.mac)],['Fabricant',d.vendor || 'Non identifié'],
+    ['Identifiant',shortId(d.mac)],['Fabricant',privateText(d.vendor, d.mac) || 'Non identifié'],
     ['Dernier RSSI observé',d.rssi === null ? 'Inconnu' : d.rssi + ' dBm'],
     ['Première observation',prettyDate(d.firstSeen)],
     ['Dernière observation',prettyDate(d.lastSeen)],
@@ -60,7 +64,7 @@ function openRadio(d) {
     ['Canal',d.channel ?? '—'],['Fréquence',d.freq ? d.freq + ' MHz' : '—'],
     ['Coordonnées du téléphone',d.position && !state.privacy ?
       d.position.lat.toFixed(6) + ', ' + d.position.lon.toFixed(6) : 'Masquées ou non renseignées'],
-    ['Signatures / groupes',d.fleets || '—']
+    ['Signatures / groupes',privateText(d.fleets, d.mac) || '—']
   ];
   for (const [label,value] of fields) {
     const item=element('div','detail');
@@ -68,7 +72,7 @@ function openRadio(d) {
     grid.append(item);
   }
   $('dialog-details').replaceChildren(grid);
-  $('device-dialog').showModal();
+  if (!$('device-dialog').open) $('device-dialog').showModal();
 }
 function metric(id, value) { $(id).textContent = state.files.length ? String(value) : '—'; }
 function currentDevices() { return selectDevices(state.devices,state.query,state.filter,state.sort); }
@@ -288,7 +292,11 @@ $('drop-zone').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e
 for(const name of ['dragenter','dragover'])$('drop-zone').addEventListener(name,e=>{e.preventDefault();e.currentTarget.classList.add('dragging');});
 for(const name of ['dragleave','drop'])$('drop-zone').addEventListener(name,e=>{e.preventDefault();e.currentTarget.classList.remove('dragging');});
 $('drop-zone').addEventListener('drop',e=>importFiles(e.dataTransfer.files));
-$('privacy-toggle').addEventListener('change',e=>{state.privacy=e.target.checked;refresh();});
+$('privacy-toggle').addEventListener('change',e=>{
+  state.privacy=e.target.checked;
+  refresh();
+  if ($('device-dialog').open && selectedRadio) openRadio(selectedRadio);
+});
 $('device-search').addEventListener('input',e=>{state.query=e.target.value;state.limit=100;renderDevices();});
 $('kind-filter').addEventListener('change',e=>{state.filter=e.target.value;state.limit=100;renderDevices();});
 $('sort-filter').addEventListener('change',e=>{state.sort=e.target.value;state.limit=100;renderDevices();});
