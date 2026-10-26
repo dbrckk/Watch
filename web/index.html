@@ -58,6 +58,18 @@
                 <span>Exports Fieldwatch · 40 Mo maximum par fichier</span>
               </div>
               <div class="upload-meta"><span id="file-status">Aucun fichier chargé</span><button id="clear-data" class="text-btn" disabled>Effacer la session</button></div>
+              <div class="local-session">
+                <div class="local-session-heading">
+                  <div><strong>Reprendre une session</strong><p id="local-save-status" role="status">Recherche d'une sauvegarde locale…</p></div>
+                  <span class="tiny-tag">Facultatif</span>
+                </div>
+                <div class="local-session-actions">
+                  <button id="save-local" type="button" class="btn btn-quiet" disabled>Enregistrer ici</button>
+                  <button id="restore-local" type="button" class="btn btn-quiet" disabled>Recharger</button>
+                  <button id="delete-local" type="button" class="text-btn" disabled>Supprimer la sauvegarde</button>
+                </div>
+                <p class="local-session-warning">Aucun enregistrement automatique. Une sauvegarde conserve les identifiants radio complets et les positions GPS éventuelles dans le stockage de ce navigateur, <strong>sans chiffrement supplémentaire</strong>. Évitez cette option sur un appareil partagé. Aucune donnée n'est transmise au serveur.</p>
+              </div>
             </section>
             <section class="surface" aria-labelledby="timeline-heading">
               <div class="section-heading"><div><p class="eyebrow">ACTIVITÉ</p><h3 id="timeline-heading">Observations dans le temps</h3></div><span id="timeline-range" class="tiny-tag">Aucune donnée</span></div>
