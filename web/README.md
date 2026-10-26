@@ -9,6 +9,13 @@ L'interface sous /web complète le projet original [Fieldwatch](https://github.c
 - export des observations filtrées en CSV et JSON
 - protection de confidentialité activée par défaut : identifiants MAC entièrement masqués dans les listes, les détails et les intitulés accessibles, y compris lorsqu'ils sont intégrés aux métadonnées ; coordonnées GPS masquées et exports dérivés anonymisés
 - interface responsive, PWA utilisable hors ligne après une première ouverture
+- reprise d'une session après fermeture via sauvegarde locale **facultative** (IndexedDB, sans enregistrement automatique)
+
+## Sauvegarde locale facultative
+
+Le bloc « Reprendre une session » permet d'**enregistrer explicitement** le relevé courant dans IndexedDB, de le **recharger après la fermeture du navigateur** et de **supprimer** cette sauvegarde. La session reste entièrement en mémoire par défaut : **aucun import n'est sauvegardé automatiquement**. Enregistrer une nouvelle fois remplace la sauvegarde précédente ; il ne s'agit pas encore d'une bibliothèque de sessions.
+
+**Important :** les radios sauvegardées conservent leur MAC complète et les éventuelles coordonnées GPS, même lorsque la confidentialité masque l'affichage. IndexedDB est local au navigateur et à l'origine de la PWA, sans chiffrement spécifique côté Watch et sans serveur d'analyse. Éviter cette fonctionnalité sur un appareil partagé. Le bouton « Effacer la session » vide seulement la session affichée, tandis que « Supprimer la sauvegarde » efface explicitement la copie persistante. Effacer les données du site dans les réglages du navigateur peut aussi supprimer cette copie. Une sauvegarde corrompue ou incompatible est refusée sans écraser la session courante. La fonctionnalité devient indisponible lorsque le navigateur bloque IndexedDB.
 
 ## Fonctionnement
 

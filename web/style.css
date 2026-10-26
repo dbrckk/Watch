@@ -42,3 +42,15 @@ dialog:modal #close-dialog { pointer-events:auto; }
   .navigation { display:flex; min-width:0; max-width:100%; overflow-x:auto; }
   .overview-grid { grid-template-columns:minmax(0,1fr); }
 }
+
+/* Explicit local checkpoint controls: full radio identifiers remain private to the browser. */
+.local-session{margin-top:19px;padding:17px;border:1px solid var(--border);border-radius:14px;background:var(--surface2)}
+.local-session-heading{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.local-session-heading strong{font-size:13px}
+.local-session-heading p{color:var(--muted);font-size:11px;margin:5px 0 0}
+.local-session-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px}
+.local-session-actions .btn{padding:9px 11px;white-space:normal}
+.local-session-actions .text-btn{padding:10px 0}
+.local-session-warning{font-size:11px;line-height:1.65;color:var(--muted);margin:12px 0 0}
+.local-session-warning strong{color:var(--text)}
+@media(max-width:430px){.local-session-actions .btn{flex:1 1 45%}.local-session-actions .text-btn{width:100%;text-align:left}}
