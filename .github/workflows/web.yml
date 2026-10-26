@@ -34,6 +34,7 @@ jobs:
           node --check web/core.mjs
           node --check web/import-processor.mjs
           node --check web/import-worker.mjs
+          node --check web/session-store.mjs
           node --check web/sw.js
       - name: Check Fieldwatch import logic
         run: node --test web/tests/*.test.mjs
