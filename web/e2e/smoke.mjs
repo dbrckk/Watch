@@ -278,6 +278,37 @@ try{
     const values=await page.locator('#device-list .radio-row .radio-extra strong').allTextContents();
     assert.deepEqual(values.map(x=>x.trim()),['-50 dBm','-88 dBm']);
   });
+  await step('No automatic persistence, explicit consent stores session in IndexedDB',async()=>{
+    await page.locator('#import-input').setInputFiles(filePayload);
+    await expectText('#metric-total','2');
+    const before=await page.evaluate(async()=> (await import('./session-store.mjs')).hasSnapshot());
+    assert.equal(before,false,'raw radio records persisted without consent');
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('#save-local').click();
+    await page.waitForFunction(()=>!document.querySelector('#restore-local').disabled);
+    assert.equal(await page.evaluate(async()=> (await import('./session-store.mjs')).hasSnapshot()),true);
+    await page.reload({waitUntil:'networkidle'});
+    await expectText('#metric-total','—');
+    await page.waitForFunction(()=>!document.querySelector('#restore-local').disabled);
+  });
+  await step('Saved observations survive a reload, but clear and delete remain separate',async()=>{
+    await page.locator('#restore-local').click();
+    await expectText('#metric-total','2');
+    assert.match(await page.locator('#file-status').textContent(),/fieldwatch-test.jsonl/);
+    assert.ok(await page.locator('#privacy-toggle').isChecked(),
+      'restored raw data must not disable privacy');
+    await page.locator('#clear-data').click();
+    await expectText('#metric-total','—');
+    assert.ok(await page.locator('#restore-local').isEnabled(),
+      'clearing in-memory view should not silently delete checkpoint');
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('#delete-local').click();
+    await page.waitForFunction(()=>document.querySelector('#restore-local').disabled);
+    assert.equal(await page.evaluate(async()=> (await import('./session-store.mjs')).hasSnapshot()),false);
+    await page.reload({waitUntil:'networkidle'});
+    await expectText('#metric-total','—');
+    assert.ok(await page.locator('#restore-local').isDisabled());
+  });
   assert.deepEqual(errors,[],'Unexpected browser script or console errors');
   process.stdout.write('\nWatch real Chromium smoke test passed.\n');
 }catch(err){
