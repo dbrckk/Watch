@@ -4,7 +4,7 @@ import {saveSnapshot,loadSnapshot,hasSnapshot,removeSnapshot} from './session-st
 
 const $ = id => document.getElementById(id);
 const state = {observations:0,dailyCounts:[],devices:[],files:[],importing:false,privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview',saved:null,localBusy:false,localAvailable:true,localStatus:'Recherche d’une sauvegarde locale…'};
-const titles = {overview:"Vue d'ensemble",devices:"Observations",map:"Positions",guide:"Guide & sécurité"};
+const titles = {overview:"Vue d'ensemble",devices:"Observations",map:"Positions",setup:"Installer / partager",guide:"Guide & sécurité"};
 let selectedRadio = null;
 
 function element(tag, cls, text) {
@@ -387,6 +387,57 @@ $('load-more').addEventListener('click',()=>{state.limit+=100;renderDevices();})
 $('save-local').addEventListener('click',saveLocalSession);
 $('restore-local').addEventListener('click',restoreLocalSession);
 $('delete-local').addEventListener('click',deleteLocalSession);
+/* Installability is controlled by the browser. Never claim native APK or PWA
+   installation succeeded just because a button was tapped. */
+let pendingPwaInstall = null;
+function updateInstallStatus(message,canPrompt=false){
+  $('pwa-install-status').textContent=message;
+  $('install-pwa').hidden=!canPrompt;
+}
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches ||
+  navigator.standalone === true;
+if (isStandalone()) updateInstallStatus('Console Web déjà ouverte en mode application.');
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  pendingPwaInstall=event;
+  updateInstallStatus('Chrome propose une installation directe.',true);
+});
+window.addEventListener('appinstalled',()=>{
+  pendingPwaInstall=null;
+  updateInstallStatus('Console Web installée sur cet appareil.');
+});
+$('install-pwa').addEventListener('click',async()=>{
+  const prompt=pendingPwaInstall;
+  if(!prompt)return;
+  pendingPwaInstall=null;
+  $('install-pwa').hidden=true;
+  try{
+    await prompt.prompt();
+    const result=await prompt.userChoice;
+    updateInstallStatus(result?.outcome==='accepted'
+      ? 'Installation acceptée dans Chrome. Vérifiez l’écran d’accueil.'
+      : 'Installation annulée. Utilisez le menu de Chrome pour réessayer.');
+  }catch{
+    updateInstallStatus('Installation automatique indisponible. Utilisez le menu ⋮ de Chrome.');
+  }
+});
+$('setup-import').addEventListener('click',()=>{
+  view('overview');
+  $('import-input').click();
+});
+document.querySelectorAll('[data-copy-source]').forEach(button=>{
+  button.addEventListener('click',async()=>{
+    const source=$(button.dataset.copySource);
+    if(!source)return;
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(source.textContent.trim());
+      notify('Commande copiée. Vérifiez le script et gardez votre clé privée.');
+    }catch{
+      notify('Copie indisponible. Sélectionnez la commande manuellement.',true);
+    }
+  });
+});
 $('export-csv').addEventListener('click',()=>exportData('csv'));
 $('export-json').addEventListener('click',()=>exportData('json'));
 $('clear-data').addEventListener('click',()=>{if(state.importing||state.localBusy)return;state.observations=0;state.dailyCounts=[];state.devices=[];state.files=[];refresh();notify('Session en mémoire effacée. Une sauvegarde locale éventuelle reste disponible séparément.');});

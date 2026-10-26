@@ -1,6 +1,6 @@
 /* Explicit user-initiated local Android -> PWA share handoff.
    Only the share POST is accepted. It never reaches the static host. */
-const CACHE='watch-console-v7';
+const CACHE='watch-console-v8';
 const INBOX='watch-share-inbox-v1';
 const MAX_BYTES=40*1024*1024;
 const AGE_MS=10*60*1000;

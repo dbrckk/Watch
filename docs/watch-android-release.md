@@ -13,8 +13,9 @@ La préparation des quatre secrets peut maintenant être exécutée **sur ton pr
 1. Depuis Termux, exécute `pkg update && pkg install gh openjdk-17 coreutils curl`.
 2. Connecte ton compte GitHub avec `gh auth login` et termine l'authentification dans le navigateur.
 3. Récupère le script : `curl -fL https://raw.githubusercontent.com/dbrckk/Watch/main/scripts/setup-watch-signing.sh -o setup-watch-signing.sh`. Tu peux examiner le script avant son exécution.
-4. Exécute `bash setup-watch-signing.sh` et entre un mot de passe fort deux fois. Le script crée un keystore privé, le valide puis envoie les quatre valeurs à GitHub Actions avec le CLI officiel. Aucun mot de passe ou contenu de clé ne s'affiche.
-5. Sauvegarde **hors de Termux et hors de GitHub** ton keystore indiqué par le script, ainsi que son mot de passe **à un endroit séparé**. Termux peut être désinstallé ou ses données effacées.
+4. Exécute `bash setup-watch-signing.sh --publish` et entre un mot de passe fort deux fois. Le script crée un keystore privé, le valide puis envoie les quatre valeurs à GitHub Actions avec le CLI officiel. Aucun mot de passe ni contenu de clé ne s'affiche. Sans `--publish`, il prépare la signature mais n'essaie jamais de publier.
+5. Sauvegarde **hors de Termux et hors de GitHub** ton keystore indiqué par le script, ainsi que son mot de passe **à un endroit séparé**. Termux peut être désinstallé ou ses données effacées. Vérifie que tu peux récupérer cette copie.
+6. Avec `--publish`, le script demande ensuite de saisir **BACKUP** pour confirmer qu'une sauvegarde indépendante existe. Sans cette confirmation, **aucune release n'est lancée** ; les quatre secrets restent configurés. Après confirmation, il déclenche le workflow GitHub officiel pour la version prévue. GitHub doit encore terminer les tests et contrôles de signature avant de publier.
 
 Le script refuse de réécrire une clé déjà existante : s'il est relancé après une erreur réseau, il utilise **la même identité de signature**. Il refuse également un mot de passe erroné et ne lance aucune publication automatiquement. Les tests utilisent des imitations locales de `gh` et `keytool` : aucune vraie clé n'est générée durant ces tests.
 

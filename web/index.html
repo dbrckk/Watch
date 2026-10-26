@@ -20,6 +20,7 @@
         <button class="nav-link active" data-view="overview" aria-current="page"><span aria-hidden="true">▦</span> Vue d'ensemble</button>
         <button class="nav-link" data-view="devices"><span aria-hidden="true">≡</span> Observations</button>
         <button class="nav-link" data-view="map"><span aria-hidden="true">⌖</span> Positions</button>
+        <button class="nav-link" data-view="setup"><span aria-hidden="true">⇣</span> Installer / partager</button>
         <button class="nav-link" data-view="guide"><span aria-hidden="true">ⓘ</span> Guide & sécurité</button>
       </nav>
       <div class="sidebar-footer">
@@ -103,6 +104,45 @@
             <p id="map-empty" class="map-empty">Importez des observations avec coordonnées GPS pour visualiser leurs positions.</p>
           </div>
           <p class="privacy-note"><strong>Attention :</strong> les coordonnées représentent la position du téléphone lors de la détection. Elles ne localisent pas les émetteurs. Le graphique n'effectue aucune requête vers un service cartographique.</p>
+        </section>
+        <section id="view-setup" class="panel-view" hidden>
+          <div class="view-heading"><div><p class="eyebrow green">INSTALLATION ET TRANSFERT</p><h2>Utiliser Watch sur Android</h2><p>Deux composants : l’APK effectue les relevés Wi-Fi/Bluetooth ; la console Web analyse leurs exports.</p></div></div>
+          <div class="setup-grid">
+            <article class="surface setup-card">
+              <div class="setup-index">01 <span>APPLICATION NATIVE</span></div>
+              <h3>Installer Watch Fieldwatch</h3>
+              <p>Android 10+ avec Wi-Fi et Bluetooth LE. Une version signée est à privilégier pour recevoir les mises à jour sans désinstaller l'application.</p>
+              <div class="setup-actions">
+                <a class="btn btn-primary" href="https://github.com/dbrckk/Watch/releases" target="_blank" rel="noopener noreferrer">Voir les APK signées</a>
+                <a class="btn btn-quiet" href="https://github.com/dbrckk/Watch/actions/workflows/android.yml?query=branch%3Amain" target="_blank" rel="noopener noreferrer">APK de test</a>
+              </div>
+              <p class="setup-caution"><strong>Publication :</strong> aucune APK stable n'est présumée disponible. Vérifiez la page des releases avant d'installer. Pour l'APK de test : choisissez une exécution Android CI réussie, téléchargez l'artefact <code>fieldwatch-debug-apk</code> puis extrayez l'APK du ZIP. Une APK de test peut nécessiter une réinstallation et faire perdre ses données.</p>
+            </article>
+            <article class="surface setup-card">
+              <div class="setup-index">02 <span>CONSOLE WEB</span></div>
+              <h3>Installer la PWA Watch</h3>
+              <p>Ouvrez ce site dans Chrome Android et utilisez <strong>⋮ → Ajouter à l'écran d'accueil → Installer</strong>. Cela permet à Watch d'apparaître parmi les destinataires du partage Android lorsque le navigateur le prend en charge.</p>
+              <p id="pwa-install-status" class="setup-status" role="status">Installation manuelle possible depuis le menu de Chrome Android.</p>
+              <button id="install-pwa" type="button" class="btn btn-primary" hidden>Installer la console Web</button>
+            </article>
+            <article class="surface setup-card">
+              <div class="setup-index">03 <span>TRANSFERT À LA DEMANDE</span></div>
+              <h3>Envoyer un relevé vers Watch</h3>
+              <p>Dans l'APK <strong>Watch Fieldwatch</strong>, activez les journaux et scannez, puis ouvrez <strong>Reports → Log export → Send observations to Watch web</strong>. Confirmez et choisissez la PWA Watch installée dans la feuille de partage.</p>
+              <p>Le fichier est remis au navigateur localement, sans serveur Watch. Le transfert n'est pas continu et nécessite votre action.</p>
+              <button id="setup-import" type="button" class="btn btn-quiet">Importer un export manuellement</button>
+              <p class="setup-caution">Si Watch n'apparaît pas dans la feuille de partage, ou si Chrome perd la pièce jointe, exportez le journal en CSV/JSONL depuis l'APK et utilisez le bouton ci-dessus. Le partage direct nécessite encore une validation sur appareil réel.</p>
+            </article>
+          </div>
+          <article class="surface setup-maintainer">
+            <div class="setup-index">PUBLICATION SIGNÉE <span>PROPRIÉTAIRE DU DÉPÔT UNIQUEMENT</span></div>
+            <h3>Activer les futures mises à jour Android</h3>
+            <p>La première version signée exige une clé de publication privée <strong>persistante</strong>. Depuis Termux sur votre téléphone, exécutez les commandes suivantes. Ne partagez jamais la clé ni son mot de passe.</p>
+            <div class="setup-code-row"><code id="setup-deps-command">pkg update &amp;&amp; pkg install gh openjdk-17 coreutils curl &amp;&amp; gh auth login</code><button class="btn btn-quiet setup-copy" type="button" data-copy-source="setup-deps-command">Copier</button></div>
+            <div class="setup-code-row"><code id="setup-release-command">curl -fL https://raw.githubusercontent.com/dbrckk/Watch/main/scripts/setup-watch-signing.sh -o setup-watch-signing.sh &amp;&amp; bash setup-watch-signing.sh --publish</code><button class="btn btn-quiet setup-copy" type="button" data-copy-source="setup-release-command">Copier</button></div>
+            <p class="setup-caution">Le script demande le mot de passe localement, configure les secrets GitHub et exige de confirmer une <strong>sauvegarde séparée de la clé privée</strong> avant de lancer le workflow de publication. Lire le script avant exécution est recommandé. Il ne publie rien sans cette confirmation.</p>
+            <a href="https://github.com/dbrckk/Watch/blob/main/docs/watch-android-release.md" target="_blank" rel="noopener noreferrer">Documentation de la signature Android ↗</a>
+          </article>
         </section>
         <section id="view-guide" class="panel-view" hidden>
           <div class="view-heading"><div><p class="eyebrow green">DOCUMENTATION</p><h2>Utiliser Watch</h2><p>Deux interfaces complémentaires : détection sur Android, analyse dans le navigateur.</p></div></div>

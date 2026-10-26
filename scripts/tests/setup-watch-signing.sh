@@ -27,6 +27,12 @@ case "$1 $2" in
   "secret list")
     printf '%s\n' WATCH_KEYSTORE_BASE64 WATCH_STORE_PASSWORD WATCH_KEY_ALIAS WATCH_KEY_PASSWORD
     ;;
+  "workflow run")
+    [[ "$3" == "android-release.yml" && "$4" == "--repo" &&
+       "$5" == "dbrckk/Watch" && "$6" == "--ref" && "$7" == "main" &&
+       "$8" == "-f" && "$9" == "version=v1.1.26-watch.2" ]] || exit 12
+    printf 'release-dispatched\n' >> "$TEST_WORKFLOW_CALLS"
+    ;;
   *) echo "Unexpected gh call" >&2; exit 11 ;;
 esac
 MOCK
@@ -53,7 +59,8 @@ MOCK
 chmod +x "$tmp/mock-bin/gh" "$tmp/mock-bin/keytool"
 export PATH="$tmp/mock-bin:$PATH" HOME="$tmp/home" XDG_DATA_HOME="$tmp/data"
 export TEST_CALLS="$tmp/secrets-sent.txt" TEST_KEYTOOL_CALLS="$tmp/key-generation.txt"
-touch "$TEST_CALLS" "$TEST_KEYTOOL_CALLS"
+export TEST_WORKFLOW_CALLS="$tmp/workflow-dispatches.txt"
+touch "$TEST_CALLS" "$TEST_KEYTOOL_CALLS" "$TEST_WORKFLOW_CALLS"
 
 # Simulate Termux: initial password + confirmation, no secret values printed.
 printf 'correctpassword123\ncorrectpassword123\n' | bash "$script" > "$tmp/output"
@@ -87,3 +94,18 @@ fi
 [[ ! -e "$tmp/missing-auth/watch-signing/watch-release.p12" ]]
 [[ "$(wc -l < "$TEST_CALLS")" -eq 8 ]]
 echo "PASS unauthenticated setup fails closed"
+
+# A refused backup confirmation must NEVER dispatch a signed APK.
+unset MOCK_NO_AUTH
+export XDG_DATA_HOME="$tmp/data"
+printf 'correctpassword123\nNO\n' | bash "$script" --publish > "$tmp/output"
+[[ ! -s "$TEST_WORKFLOW_CALLS" ]]
+[[ "$(wc -l < "$TEST_KEYTOOL_CALLS")" -eq 1 ]]
+echo "PASS no signed publication without verified key backup confirmation"
+
+# A confirmed backup performs precisely one official workflow dispatch.
+printf 'correctpassword123\nBACKUP\n' | bash "$script" --publish > "$tmp/output"
+[[ "$(wc -l < "$TEST_WORKFLOW_CALLS")" -eq 1 ]]
+[[ "$(wc -l < "$TEST_KEYTOOL_CALLS")" -eq 1 ]]
+! grep -q 'correctpassword123' "$tmp/output"
+echo "PASS confirmed backup dispatches official signed release only once"

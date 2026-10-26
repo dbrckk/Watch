@@ -39,6 +39,12 @@ Site public déployé : https://watch-fieldwatch.shipstatic.com (hébergement st
 La provenance, la licence MIT originale et le fichier NOTICE restent dans la racine du dépôt. Les tables IEEE/Bluetooth SIG conservent leurs conditions de réutilisation propres. La position GPS décrit l'endroit du téléphone lors de l'écoute, et ne permet pas d'affirmer la position exacte d'une radio.
 
 
+## Installation simplifiée depuis Android
+
+L'onglet **Installer / partager** du site explique où télécharger une APK du fork, comment installer la PWA Web depuis Chrome et comment transmettre les observations. Il propose aussi un import manuel si le destinataire Web Share Target n'apparaît pas ou perd la pièce jointe. Une APK compilée en CI n'est qu'un build de test : une APK de production requiert la clé privée permanente du propriétaire du dépôt et une release GitHub effectivement publiée.
+
+Pour le propriétaire du dépôt, le même onglet contient les commandes Termux à copier : installation des dépendances et authentification GitHub, puis téléchargement de `setup-watch-signing.sh` et `bash setup-watch-signing.sh --publish`. Le script vérifie la signature, configure les secrets, et n'envoie la demande de publication qu'après confirmation d'une sauvegarde de clé indépendante. Les fichiers personnels de signature ne transitent jamais par le site Web et ne sont pas envoyés dans cette conversation. Il est conseillé de vérifier le script téléchargé avant exécution.
+
 ## Liaison Android → Watch web via partage natif
 
 La nouvelle APK contient, dans **Reports → Log export**, un bouton **Send observations to Watch web** :

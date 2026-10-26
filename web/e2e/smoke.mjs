@@ -309,6 +309,37 @@ try{
     await expectText('#metric-total','—');
     assert.ok(await page.locator('#restore-local').isDisabled());
   });
+  await step('Android install center offers real APK destinations and safe setup instructions',async()=>{
+    await page.locator('[data-view="setup"]').click();
+    await expectText('#page-title','Installer / partager');
+    assert.equal(await page.locator('#view-setup').isVisible(),true);
+    assert.equal(await page.locator('#view-setup a[href="https://github.com/dbrckk/Watch/releases"]').count(),1);
+    assert.equal(await page.locator('#view-setup a[href*="workflows/android.yml"]').count(),1);
+    assert.match(await page.locator('#setup-release-command').textContent(),/setup-watch-signing.sh --publish/);
+    assert.match(await page.locator('#view-setup').textContent(),/sauvegarde séparée de la clé privée/);
+    assert.ok(await page.locator('#install-pwa').isHidden(),'PWA install must not be promised without browser support');
+    assert.match(await page.locator('#pwa-install-status').textContent(),/Chrome/);
+  });
+  await step('PWA install control appears only when browser offers a real prompt',async()=>{
+    await page.evaluate(()=>{
+      const event=new Event('beforeinstallprompt',{cancelable:true});
+      event.prompt=async()=>{};
+      event.userChoice=Promise.resolve({outcome:'accepted'});
+      dispatchEvent(event);
+    });
+    assert.ok(await page.locator('#install-pwa').isVisible());
+    await page.locator('#install-pwa').click();
+    await page.waitForFunction(()=>document.querySelector('#pwa-install-status')?.textContent?.includes('acceptée'));
+    assert.ok(await page.locator('#install-pwa').isHidden());
+  });
+  await step('Fallback manual import from Android install guide actually opens picker',async()=>{
+    const pickerEvent=page.waitForEvent('filechooser');
+    await page.locator('#setup-import').click();
+    const picker=await pickerEvent;
+    await picker.setFiles(filePayload);
+    await expectText('#metric-total','2');
+    assert.ok(await page.locator('#view-overview').isVisible());
+  });
   assert.deepEqual(errors,[],'Unexpected browser script or console errors');
   process.stdout.write('\nWatch real Chromium smoke test passed.\n');
 }catch(err){
