@@ -116,10 +116,15 @@ try{
     let text=(await page.locator('#device-dialog').textContent());
     for(const leaked of [mac,dashed,'112233445566','00:11:22:33:44:55'])
       assert.ok(!text.includes(leaked),'dialog leaked '+leaked);
+    // The dialog is modal: a real user must close it before using the toggle.
+    await page.locator('#close-dialog').click();
     await page.locator('#privacy-toggle').uncheck();
+    await page.locator('#recent-list .radio-row').click();
     assert.match(await page.locator('#dialog-title').textContent(),/11:22:33:44:55:66/);
     assert.match(await page.locator('#dialog-details').textContent(),/11-22-33-44-55-66/);
+    await page.locator('#close-dialog').click();
     await page.locator('#privacy-toggle').check();
+    await page.locator('#recent-list .radio-row').click();
     assert.ok(!(await page.locator('#device-dialog').textContent()).includes(mac),
       'dialog did not re-mask when toggled back to private');
     await page.locator('#close-dialog').click();
