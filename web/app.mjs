@@ -1,8 +1,9 @@
 import {selectDevices,toCsv,summary,exportDevices,geographicBounds,redactRadioText} from './core.mjs';
 import {processFiles} from './import-processor.mjs';
+import {saveSnapshot,loadSnapshot,hasSnapshot,removeSnapshot} from './session-store.mjs';
 
 const $ = id => document.getElementById(id);
-const state = {observations:0,dailyCounts:[],devices:[],files:[],importing:false,privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview'};
+const state = {observations:0,dailyCounts:[],devices:[],files:[],importing:false,privacy:true,filter:'ALL',sort:'recent',query:'',limit:100,view:'overview',saved:null,localBusy:false,localAvailable:true,localStatus:'Recherche d’une sauvegarde locale…'};
 const titles = {overview:"Vue d'ensemble",devices:"Observations",map:"Positions",guide:"Guide & sécurité"};
 let selectedRadio = null;
 
@@ -178,7 +179,12 @@ function refresh() {
   renderOverview();renderDevices();if(state.view==='map')drawMap();
   const has=state.files.length>0;
   $('file-status').textContent=has ? state.files.join(', ') + ' · ' +state.observations+' observations' : 'Aucun fichier chargé';
-  $('clear-data').disabled=!has;
+  $('clear-data').disabled=!has || state.importing || state.localBusy;
+  $('import-input').disabled=state.importing || state.localBusy;
+  $('save-local').disabled=!has || state.importing || state.localBusy || !state.localAvailable || state.saved===null;
+  $('restore-local').disabled=state.saved!==true || state.importing || state.localBusy || !state.localAvailable;
+  $('delete-local').disabled=state.saved!==true || state.importing || state.localBusy || !state.localAvailable;
+  $('local-save-status').textContent=state.localStatus;
   $('status-text').textContent=has ? state.devices.length+' radios analysées sur cet appareil' : 'En attente de relevés · aucun transfert de données';
 }
 async function processOffMain(files) {
@@ -213,7 +219,7 @@ async function processOffMain(files) {
 async function importFiles(fileList){
   const files=Array.from(fileList).filter(f=>f && f.name);
   if(!files.length)return;
-  if(state.importing){notify('Une importation est déjà en cours.',true);return;}
+  if(state.importing || state.localBusy){notify('Une autre opération est déjà en cours.',true);return;}
   state.importing=true;
   $('import-input').disabled=true;
   $('clear-data').disabled=true;
@@ -234,6 +240,83 @@ async function importFiles(fileList){
     state.importing=false;
     $('import-input').disabled=false;
     $('import-input').value='';
+    refresh();
+  }
+}
+async function initializeLocalSession() {
+  try {
+    state.saved=await hasSnapshot();
+    state.localStatus=state.saved ? 'Une session enregistrée est disponible sur cet appareil.' :
+      'Aucune sauvegarde locale. Rien ne sera enregistré automatiquement.';
+  } catch {
+    state.saved=false;
+    state.localAvailable=false;
+    state.localStatus='Stockage local inaccessible (mode privé ou navigateur incompatible).';
+  }
+  refresh();
+}
+async function saveLocalSession() {
+  if (!state.files.length || state.importing || state.localBusy || !state.localAvailable) return;
+  if (!confirm('Enregistrer ces observations sur cet appareil ? Les adresses MAC complètes et les coordonnées GPS éventuelles resteront dans ce navigateur, sans chiffrement supplémentaire. Ne pas utiliser sur un appareil partagé.')) return;
+  state.localBusy=true;
+  refresh();
+  try {
+    const at=await saveSnapshot({
+      devices:state.devices,observations:state.observations,
+      dailyCounts:state.dailyCounts,files:state.files,
+    });
+    state.saved=true;
+    state.localStatus='Session enregistrée localement le '+prettyDate(at)+'.';
+    notify('Sauvegarde enregistrée sur cet appareil uniquement.');
+  } catch (err) {
+    notify('Enregistrement impossible : '+(err?.message||'stockage indisponible'),true);
+  } finally {
+    state.localBusy=false;
+    refresh();
+  }
+}
+async function restoreLocalSession() {
+  if (state.saved!==true || state.importing || state.localBusy) return;
+  if (state.files.length && !confirm('Remplacer la session actuellement affichée par la sauvegarde locale ?')) return;
+  state.localBusy=true;
+  refresh();
+  try {
+    const saved=await loadSnapshot();
+    if (!saved) throw new Error('Sauvegarde introuvable.');
+    // Validate before modifying any displayed data: failed restores are atomic.
+    state.devices=saved.devices;
+    state.observations=saved.observations;
+    state.dailyCounts=saved.dailyCounts;
+    state.files=saved.files;
+    state.limit=100;
+    state.query='';state.filter='ALL';state.sort='recent';
+    $('device-search').value='';
+    $('kind-filter').value='ALL';
+    $('sort-filter').value='recent';
+    state.localStatus='Session enregistrée le '+prettyDate(saved.savedAt)+' disponible.';
+    view('overview');
+    notify('Session locale rechargée : '+saved.observations+' observations.');
+  } catch (err) {
+    notify('Rechargement impossible : '+(err?.message||'sauvegarde invalide'),true);
+  } finally {
+    state.localBusy=false;
+    refresh();
+  }
+}
+async function deleteLocalSession() {
+  if (state.saved!==true || state.importing || state.localBusy) return;
+  if (!confirm('Supprimer définitivement la sauvegarde de ce navigateur ? Les données de la session affichée resteront ouvertes jusqu’à leur effacement.')) return;
+  state.localBusy=true;
+  refresh();
+  try {
+    await removeSnapshot();
+    state.saved=false;
+    state.localStatus='Sauvegarde supprimée. Rien n’est conservé entre les sessions.';
+    notify('Sauvegarde locale supprimée.');
+  } catch (err) {
+    notify('Suppression impossible : '+(err?.message||'stockage indisponible'),true);
+  } finally {
+    state.localBusy=false;
     refresh();
   }
 }
@@ -301,13 +384,17 @@ $('device-search').addEventListener('input',e=>{state.query=e.target.value;state
 $('kind-filter').addEventListener('change',e=>{state.filter=e.target.value;state.limit=100;renderDevices();});
 $('sort-filter').addEventListener('change',e=>{state.sort=e.target.value;state.limit=100;renderDevices();});
 $('load-more').addEventListener('click',()=>{state.limit+=100;renderDevices();});
+$('save-local').addEventListener('click',saveLocalSession);
+$('restore-local').addEventListener('click',restoreLocalSession);
+$('delete-local').addEventListener('click',deleteLocalSession);
 $('export-csv').addEventListener('click',()=>exportData('csv'));
 $('export-json').addEventListener('click',()=>exportData('json'));
-$('clear-data').addEventListener('click',()=>{if(state.importing)return;state.observations=0;state.dailyCounts=[];state.devices=[];state.files=[];refresh();notify('Données effacées de cette session.');});
+$('clear-data').addEventListener('click',()=>{if(state.importing||state.localBusy)return;state.observations=0;state.dailyCounts=[];state.devices=[];state.files=[];refresh();notify('Session en mémoire effacée. Une sauvegarde locale éventuelle reste disponible séparément.');});
 $('close-dialog').addEventListener('click',()=>$('device-dialog').close());
 window.addEventListener('resize',()=>{if(state.view==='map')drawMap();});
 // Secure contexts include HTTPS and the loopback origin used for local development.
 if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 refresh();
+initializeLocalSession();
 
 consumeIncomingShare();
